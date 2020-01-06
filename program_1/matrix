@@ -110,12 +110,35 @@ function transpose()
 
 function mean()
 {
-  local temp
+  local temp avg
 
   temp=($(cat - | matrix_into_memory))
   rows=${temp[@]:0:1}
   cols=${temp[@]:1:1}
+  temp=(${temp[@]:2:$((${#temp[@]} - 2))})
 
+  for i in $(eval echo {0..$((cols - 1))})
+  do
+    j=$i
+    avg=0
+
+    while [[ $j -lt $((rows * cols)) ]]
+    do
+      ((avg += "${temp[$j]}"))
+      ((j = j + cols))
+    done
+    
+    ((avg = avg/rows)) #FIXME: rounding
+    echo -n "$avg"
+
+    # only print tabs if we're not on the last column
+    if ! [[ $i -eq $((cols - 1)) ]]
+    then
+      echo -ne "\t"
+    fi
+  done
+
+  echo
 }
 
 what_to_do "$@"
