@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+
+# initialize global variables
+rows=0
+cols=0
+  
+
+function what_to_do()
+{
+  case $1 in 
+  dims)
+    stdin_or_file "$@"
+    ;;
+  transpose)
+    stdin_or_file "$@"
+    ;;
+  mean)
+    stdin_or_file "$@"
+    ;;
+  add)
+    add
+    ;;
+  multiply)
+    multiply
+    ;;
+  *)
+    problems
+    ;;
+  esac
+}
+
+function stdin_or_file()
+{
+  if [[ -z "$2" ]]
+  then
+    # stdin
+    echo stdin mode
+    cat - | "$1"
+  else
+    # file
+    echo file mode
+    cat "$2" | "$1"
+  fi
+}
+
+function matrix_into_memory()
+{
+  local line data temp rows cols
+
+  while read line
+  do
+    temp=($line)
+    data=(${data[@]} ${temp[@]})
+    ((rows++))
+
+    if [[ $cols -eq 0 ]]
+    then
+      cols=${#temp[@]}
+    fi
+  done
+
+  data=($rows $cols ${data[@]})
+
+  #echo "[matrix_into_memory] $rows $cols"
+  echo ${data[@]}
+}
+
+function dims()
+{
+  local temp
+
+  temp=($(cat - | matrix_into_memory))
+  rows=${temp[@]:0:1}
+  cols=${temp[@]:1:1}
+
+  echo "$rows $cols"
+}
+
+function transpose()
+{
+  local temp j i
+
+  temp=($(cat - | matrix_into_memory))
+  rows=${temp[@]:0:1}
+  cols=${temp[@]:1:1}
+  temp=(${temp[@]:2:$((${#temp[@]} - 2))})
+  
+  #echo ${temp[@]}
+
+  for i in $(eval echo {0..$((cols - 1))})
+  do
+    j=$i
+
+    while [[ $j -lt $((rows * cols)) ]]
+    do
+      echo -ne "${temp[$j]}"
+
+      # only print tabs if we're not on the last column
+      if ! [[ $j -eq $((i + (rows-1)*cols)) ]]
+      then
+        echo -ne "\t"
+      fi
+
+      ((j = j + cols))
+    done
+
+    echo
+  done
+}
+
+function mean()
+{
+  local temp
+
+  temp=($(cat - | matrix_into_memory))
+  rows=${temp[@]:0:1}
+  cols=${temp[@]:1:1}
+
+}
+
+what_to_do "$@"
