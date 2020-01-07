@@ -163,7 +163,7 @@ function add()
   mat_l=(${mat_l[@]:2:$((${#mat_l[@]} - 2))})
   mat_r=(${mat_r[@]:2:$((${#mat_r[@]} - 2))})
 
-  if ! [[ $rows -eq $cols ]] | [[ ${rows[1]} -eq ${cols[1]} ]]
+  if [[ ! $rows -eq ${rows[1]} ]] || [[ ! $cols -eq ${cols[1]} ]]
   then
     problems
     exit
