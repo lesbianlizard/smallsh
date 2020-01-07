@@ -18,10 +18,10 @@ function what_to_do()
     stdin_or_file "$@"
     ;;
   add)
-    add
+    add "$2" "$3"
     ;;
   multiply)
-    multiply
+    multiply "$2" "$3"
     ;;
   *)
     problems
@@ -57,6 +57,9 @@ function matrix_into_memory()
     fi
   done
 
+  # the matrix dimensions are stored in the first
+  # two elements of this array, followed by all of
+  # the elements of the matrix
   data=($rows $cols ${data[@]})
 
   #echo "[matrix_into_memory] $rows $cols"
@@ -138,5 +141,38 @@ function mean()
 
   echo
 }
+
+function add()
+{
+  local temp
+
+  mat_l=($(cat "$1" | matrix_into_memory))
+  mat_r=($(cat "$2" | matrix_into_memory))
+  rows=(${mat_l[@]:0:1} ${mat_r[@]:0:1})
+  cols=(${mat_l[@]:1:1} ${mat_r[@]:1:1})
+  mat_l=(${mat_l[@]:2:$((${#mat_l[@]} - 2))})
+  mat_r=(${mat_r[@]:2:$((${#mat_r[@]} - 2))})
+
+  #FIXME: check whether matrices are same dimensions
+
+  #echo ${rows[@]}
+  #echo ${cols[@]}
+
+  for i in $(eval echo {0..$((rows - 1))})
+  do
+    for j in $(eval echo {$((i*cols))..$(((i + 1)*cols - 1))})
+    do
+      echo -n $((${mat_l[j]} + ${mat_r[j]}))
+
+      if ! [[ $j -eq $(((i + 1)*cols - 1)) ]]
+      then
+        echo -ne "\t"
+      fi
+    done
+
+    echo
+  done
+}
+
 
 what_to_do "$@"
