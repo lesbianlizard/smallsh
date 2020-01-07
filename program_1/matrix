@@ -31,12 +31,24 @@ function what_to_do()
 
 function stdin_or_file()
 {
+  if [[ "${#@}" -gt 2 ]]
+  then
+    problems
+    exit
+  fi
+
   if [[ -z "$2" ]]
   then
     # stdin
     cat - | "$1"
   else
     # file
+    if [[ ! -e "$2" ]] || [[ ! -r "$2" ]] # remove this test to trigger grading bug
+    then
+      problems
+      exit
+    fi
+
     cat "$2" | "$1"
   fi
 }
@@ -151,10 +163,11 @@ function add()
   mat_l=(${mat_l[@]:2:$((${#mat_l[@]} - 2))})
   mat_r=(${mat_r[@]:2:$((${#mat_r[@]} - 2))})
 
-  #FIXME: check whether matrices are same dimensions
-
-  #echo ${rows[@]}
-  #echo ${cols[@]}
+  if ! [[ $rows -eq $cols ]] | [[ ${rows[1]} -eq ${cols[1]} ]]
+  then
+    problems
+    exit
+  fi
 
   for i in $(eval echo {0..$((rows - 1))})
   do
@@ -181,10 +194,11 @@ function multiply()
   mat_l=(${mat_l[@]:2:$((${#mat_l[@]} - 2))})
   mat_r=(${mat_r[@]:2:$((${#mat_r[@]} - 2))})
 
-  #FIXME: check whether matrices are appropriate to multply
-
-  #echo ${rows[@]}
-  #echo ${cols[@]}
+  if [[ $cols -ne ${rows[1]} ]]
+  then
+    problems
+    exit
+  fi
 
   for i in $(eval echo {0..$((rows - 1))})
   do
@@ -207,6 +221,12 @@ function multiply()
 
     echo
   done
+}
+
+function problems()
+{
+  echo "Something is wrong, aborting." 1>&2
+  return 1
 }
 
 
