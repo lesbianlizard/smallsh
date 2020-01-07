@@ -303,8 +303,8 @@ else
 	err "Usage: $0 [bash_program_file]"
 fi
 
-chmod +x "$cmd" # Make sure submission is executable
-dos2unix "$cmd" # Fix windows newlines (^M errors)
+#chmod +x "$cmd" # Make sure submission is executable
+#dos2unix "$cmd" # Fix windows newlines (^M errors)
 
 cd "$(dirname "$cmd")" # Change working directory to submission file
 cmd="$(basename "$cmd")"
