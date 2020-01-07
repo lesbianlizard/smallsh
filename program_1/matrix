@@ -144,8 +144,6 @@ function mean()
 
 function add()
 {
-  local temp
-
   mat_l=($(cat "$1" | matrix_into_memory))
   mat_r=($(cat "$2" | matrix_into_memory))
   rows=(${mat_l[@]:0:1} ${mat_r[@]:0:1})
@@ -165,6 +163,43 @@ function add()
       echo -n $((${mat_l[j]} + ${mat_r[j]}))
 
       if ! [[ $j -eq $(((i + 1)*cols - 1)) ]]
+      then
+        echo -ne "\t"
+      fi
+    done
+
+    echo
+  done
+}
+
+function multiply()
+{
+  mat_l=($(cat "$1" | matrix_into_memory))
+  mat_r=($(cat "$2" | matrix_into_memory))
+  rows=(${mat_l[@]:0:1} ${mat_r[@]:0:1})
+  cols=(${mat_l[@]:1:1} ${mat_r[@]:1:1})
+  mat_l=(${mat_l[@]:2:$((${#mat_l[@]} - 2))})
+  mat_r=(${mat_r[@]:2:$((${#mat_r[@]} - 2))})
+
+  #FIXME: check whether matrices are appropriate to multply
+
+  #echo ${rows[@]}
+  #echo ${cols[@]}
+
+  for i in $(eval echo {0..$((rows - 1))})
+  do
+    for j in $(eval echo {0..$((${cols[1]} - 1))})
+    do
+      sum=0
+
+      for k in $(eval echo {0..$((cols - 1))})
+      do
+        ((sum += ${mat_l[$((i*cols + k))]} * ${mat_r[$((j + k*${cols[1]}))]}))
+      done
+
+      echo -n "$sum"
+
+      if ! [[ $j -eq $((${cols[1]} - 1)) ]]
       then
         echo -ne "\t"
       fi
