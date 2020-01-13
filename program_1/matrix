@@ -141,9 +141,7 @@ function mean()
       ((j = j + cols))
     done
     
-    #((avg = avg/rows)) #FIXME: rounding
-    (( avg = (avg + (cols/2)*( (avg>0)*2-1 )) / cols ))
-    #avg=$(echo $avg/$rows | bc -l)
+    (( avg = (avg + (rows/2)*( (avg>0)*2-1 )) / rows))
     echo -n "$avg"
 
     # only print tabs if we're not on the last column
