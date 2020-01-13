@@ -170,6 +170,7 @@ err(){
 expect_error(){
     ((tests+=1))
     score="$1"
+    # ask Tyler about this
     timeout --foreground -s9 "$2" $3 >"$outpipe" 2>"$errpipe"
     result=$?
     if
