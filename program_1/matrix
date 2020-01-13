@@ -24,16 +24,25 @@ function what_to_do()
     multiply "$2" "$3"
     ;;
   *)
-    problems
+    problems "no valid command specified."
     ;;
   esac
+}
+
+function is_file_readable()
+{
+  if [[ ! -e "$1" ]] || [[ ! -r "$1" ]] # remove this test to trigger grading bug
+  then
+    problems "file $1 unreadable or does not exist"
+    exit
+  fi
 }
 
 function stdin_or_file()
 {
   if [[ "${#@}" -gt 2 ]]
   then
-    problems
+    problems "the $1 command must be called with 0 or 1 arguments"
     exit
   fi
 
@@ -43,12 +52,7 @@ function stdin_or_file()
     cat - | "$1"
   else
     # file
-    if [[ ! -e "$2" ]] || [[ ! -r "$2" ]] # remove this test to trigger grading bug
-    then
-      problems
-      exit
-    fi
-
+    is_file_readable $2
     cat "$2" | "$1"
   fi
 }
@@ -156,6 +160,8 @@ function mean()
 
 function add()
 {
+  is_file_readable "$1"
+  is_file_readable "$2"
   mat_l=($(cat "$1" | matrix_into_memory))
   mat_r=($(cat "$2" | matrix_into_memory))
   rows=(${mat_l[@]:0:1} ${mat_r[@]:0:1})
@@ -165,7 +171,7 @@ function add()
 
   if [[ ! $rows -eq ${rows[1]} ]] || [[ ! $cols -eq ${cols[1]} ]]
   then
-    problems
+    problems "matrix dimensions must match for addition"
     exit
   fi
 
@@ -187,6 +193,8 @@ function add()
 
 function multiply()
 {
+  is_file_readable "$1"
+  is_file_readable "$2"
   mat_l=($(cat "$1" | matrix_into_memory))
   mat_r=($(cat "$2" | matrix_into_memory))
   rows=(${mat_l[@]:0:1} ${mat_r[@]:0:1})
@@ -196,7 +204,7 @@ function multiply()
 
   if [[ $cols -ne ${rows[1]} ]]
   then
-    problems
+    problems "matrix dimensions must be of the form MxN, NxP for multiplication"
     exit
   fi
 
@@ -225,7 +233,7 @@ function multiply()
 
 function problems()
 {
-  echo "Something is wrong, aborting." 1>&2
+  echo "$0: error: $1" 1>&2
   return 1
 }
 
