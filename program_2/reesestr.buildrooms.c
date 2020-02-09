@@ -6,12 +6,12 @@
 #include <time.h>
 #define N_ROOMS 7
 
-enum roomType{MID_ROOM, START_ROOM, END_ROOM};
+//enum roomType{MID_ROOM, START_ROOM, END_ROOM};
 
 struct room
 {
   char name[10];
-  enum roomType type;
+  char type[11];
   int nConnsOut;
   struct room* connsOut[6];
 };
@@ -104,12 +104,12 @@ void initRoomTypes(struct room* rooms)
 
   for (i = 0; i < N_ROOMS; i++)
   {
-    rooms[i].type = MID_ROOM;
+    strcpy(rooms[i].type, "MID_ROOM");
     rooms[i].nConnsOut = 0;
   }
 
-  rooms[indicies[0]].type = START_ROOM;
-  rooms[indicies[1]].type = END_ROOM;
+  strcpy(rooms[indicies[0]].type, "START_ROOM");
+  strcpy(rooms[indicies[1]].type, "END_ROOM");
 
   free(indicies);
 }
@@ -148,7 +148,7 @@ int isConnected(struct room* room1, struct room* room2)
 
   for (i = 0; i < room2->nConnsOut; i++)
   {
-    if (room1->name == room2->connsOut[i]->name)
+    if (strcmp(room1->name, room2->connsOut[i]->name) == 0)
     {
       is_connected = 1;
     }
@@ -180,10 +180,11 @@ void initRoomConnections(struct room* rooms)
   }
 }
 
+
 void printRoomInfo(struct room room)
 {
   int i;
-  printf("name: %s\ntype: %i\nnConnsOut: %i\nconnections: ", room.name, room.type, room.nConnsOut);
+  printf("name: %s\ntype: %s\nnConnsOut: %i\nconnections: ", room.name, room.type, room.nConnsOut);
   
   for (i = 0; i < room.nConnsOut; i++)
   {
@@ -204,11 +205,29 @@ void printRoomsInfo(struct room* rooms)
   }
 }
 
+void writeRoomToFile(char* filename, struct room* room)
+{
+ FILE* room_file;
+ int i;
+ room_file = fopen(filename, "w");
+ fprintf(room_file, "ROOM NAME: %s\n", room->name);
+
+ for (i = 0; i < room->nConnsOut; i++)
+ {
+  fprintf(room_file, "CONNECTION %i: %s\n", i, room->connsOut[i]->name);
+ }
+
+ fprintf(room_file, "ROOM TYPE: %s\n", room->type);
+
+ fclose(room_file);
+}
+
 
 int main()
 {
   srand(time(NULL));
   char* dirname = "reesestr.rooms.PIDHERE";
+  char room_filename[100];
   mkdir(dirname, 0755);
   int i;
 
@@ -222,12 +241,17 @@ int main()
     printRoomInfo(rooms[i]);
     printf("\n");
   }
-//
-//  int i;
-//  for (i = 0; i < N_ROOMS; i++)
-//  {
-//    writeRoomToFile(rooms[i]); 
-//  }
+
+  for (i = 0; i < N_ROOMS; i++)
+  {
+    strcpy(room_filename, dirname);
+    strcat(room_filename, "/");
+    strcat(room_filename, rooms[i].name);
+    strcat(room_filename, "_room");
+    printf("room_filename: %s\n", room_filename);
+    
+    writeRoomToFile(room_filename, &rooms[i]); 
+  }
 
   return 0;
 }
