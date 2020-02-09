@@ -16,12 +16,32 @@ struct room
   char name[10];
   char type[11];
   int nConnsOut;
-  struct room* connsOut[6];
-
-  // temporary storage for connections before converting them to the connsOut array
-  int nFakeConns;
-  char* fakeConns[6];
+  char** connsOut[6];
 };
+
+void printRoomInfo(struct room room)
+{
+  int i;
+  printf("name: %s\ntype: %s\nnConnsOut: %i\nconnections: ", room.name, room.type, room.nConnsOut);
+  
+  for (i = 0; i < room.nConnsOut; i++)
+  {
+    printf("%s ", room.connsOut[i]);
+  }
+
+  printf("\n");
+}
+
+void printRoomsInfo(struct room* rooms)
+{
+  int i;
+
+  for (i = 0; i < N_ROOMS; i++)
+  {
+    printRoomInfo(rooms[i]);
+    printf("\n");
+  }
+}
 
 
 // From example on Canvas
@@ -64,27 +84,56 @@ char* getNewestDir()
   return newestDirName;
 }
 
-struct room readFileToStruct(char* filename, char* dir)
+void readFileToStruct(char* filename, char* dir, struct room* new_room)
 {
-  int i;
+  int i=0;
+  int in_len;
+  char* where;
+
   chdir(dir);
+   
+  // I was looking for a way to read an entire file into a C string, and discovered
+  // that directly memory-mapping files was very simple
   int room_file_fd = open(filename, O_RDONLY);
   int room_file_len = lseek(room_file_fd, 0, SEEK_END);
-  char* data = mmap(0, room_file_len, PROT_READ, MAP_PRIVATE, room_file_fd, 0);
-  printf("hi there\n");
+  char* room_file = mmap(0, room_file_len, PROT_READ, MAP_PRIVATE, room_file_fd, 0);
 
-  printf("memory mapped file because why not: %s", data);
+  // Look for the second space on line 1
+  where = strpbrk(room_file, " ");
+  where = strpbrk(where + 1, " ");
+  where++;
+  in_len = strcspn(where, "\n");
+  strncpy(new_room->name, where, in_len);
 
+  while (strstr(where, "CONNECTION") != 0)
+  {
+    where = strpbrk(where, " ");
+    where = strpbrk(where + 1, " ");
+    where++;
+    in_len = strcspn(where, "\n");
+    new_room->connsOut[i] = malloc(in_len*sizeof(char));
+    strncpy(new_room->connsOut[i], where, in_len);
+    new_room->nConnsOut++;
+    i++;
+  }
+
+  where = strpbrk(where, " ");
+  where = strpbrk(where + 1, " ");
+  where++;
+  in_len = strcspn(where, "\n");
+  strncpy(new_room->type, where, in_len);
+
+  printRoomInfo(*new_room);
+
+  close(room_file_fd);
 }
 
-struct room* readFilesFromDir(char* dir) 
+void readFilesFromDir(char* dir, struct room* rooms) 
 {
   DIR* dirToCheck; // Holds the directory we're starting in
   struct dirent *fileInDir; // Holds the current subdir of the starting dir
   dirToCheck = opendir(dir); // Open up the directory this program was run in
   int i = 0;
-
-  struct room* rooms = malloc(N_ROOMS*sizeof(struct room));
 
   if (dirToCheck > 0) // Make sure the current directory could be opened
   {
@@ -94,7 +143,8 @@ struct room* readFilesFromDir(char* dir)
       {
         printf("Found the file: %s\n", fileInDir->d_name);
 
-        rooms[i] = readFileToStruct(fileInDir->d_name, dir);
+        readFileToStruct(fileInDir->d_name, dir, &rooms[i]);
+        printf("\n");
         i++;
       }
     }
@@ -114,7 +164,8 @@ int main()
 
   printf("\n");
 
-  readFilesFromDir(dir);
+  readFilesFromDir(dir, &rooms);
+  //printRoomsInfo(rooms);
 
 
   free(dir);
