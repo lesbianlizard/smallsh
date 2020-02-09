@@ -16,7 +16,7 @@ struct room
   char name[10];
   char type[11];
   int nConnsOut;
-  char** connsOut[6];
+  char* connsOut[6];
 };
 
 void printRoomInfo(struct room room)
@@ -111,7 +111,7 @@ void readFileToStruct(char* filename, char* dir, struct room* new_room)
     where = strpbrk(where + 1, " ");
     where++;
     in_len = strcspn(where, "\n");
-    new_room->connsOut[i] = malloc(in_len*sizeof(char));
+    new_room->connsOut[i] = malloc(10*sizeof(char));
     strncpy(new_room->connsOut[i], where, in_len);
     new_room->nConnsOut++;
     i++;
@@ -123,7 +123,7 @@ void readFileToStruct(char* filename, char* dir, struct room* new_room)
   in_len = strcspn(where, "\n");
   strncpy(new_room->type, where, in_len);
 
-  printRoomInfo(*new_room);
+  //printRoomInfo(*new_room);
 
   close(room_file_fd);
 }
@@ -155,18 +155,36 @@ void readFilesFromDir(char* dir, struct room* rooms)
 }
 
 
-
 int main()
 {
-  struct room rooms[N_ROOMS];
+  int i, j;
+  struct room* rooms = malloc(N_ROOMS*sizeof(struct room));
   char* dir;
   dir = getNewestDir();
 
-  printf("\n");
+//  for (i = 0; i < N_ROOMS; i++)
+//  {
+//    for (j = 0; j < 6; j++)
+//    {
+//      rooms[i].connsOut[j] = malloc(10*sizeof(char));
+//    }
+//  }
 
-  readFilesFromDir(dir, &rooms);
-  //printRoomsInfo(rooms);
+  printf("\n");
+  //printRoomInfo(rooms[0]);
+
+  readFilesFromDir(dir, rooms);
+  printRoomsInfo(rooms);
 
 
   free(dir);
+  free(rooms);
+
+  for (i = 0; i < N_ROOMS; i++)
+  {
+    for (j = 0; j < rooms[i].nConnsOut; j++)
+    {
+      free(rooms[i].connsOut[j]);
+    }
+  }
 }
