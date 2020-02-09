@@ -64,7 +64,7 @@ char* getNewestDir()
     {
       if (strstr(fileInDir->d_name, targetDirPrefix) != NULL) // If entry has prefix
       {
-        printf("Found the prefex: %s\n", fileInDir->d_name);
+        //printf("Found the prefex: %s\n", fileInDir->d_name);
         stat(fileInDir->d_name, &dirAttributes); // Get attributes of the entry
 
         if ((int)dirAttributes.st_mtime > newestDirTime) // If this time is bigger
@@ -72,15 +72,15 @@ char* getNewestDir()
           newestDirTime = (int)dirAttributes.st_mtime;
           memset(newestDirName, '\0', sizeof(newestDirName));
           strcpy(newestDirName, fileInDir->d_name);
-          printf("Newer subdir: %s, new time: %d\n",
-              fileInDir->d_name, newestDirTime);
+          //printf("Newer subdir: %s, new time: %d\n",
+          //    fileInDir->d_name, newestDirTime);
         }
       }
     }
   }
 
   closedir(dirToCheck); // Close the directory we opened
-  printf("Newest entry found is: %s\n", newestDirName);
+  //printf("Newest entry found is: %s\n", newestDirName);
   return newestDirName;
 }
 
@@ -142,7 +142,7 @@ void readFilesFromDir(char* dir, struct room* rooms)
     {
       if (fileInDir->d_type == DT_REG)
       {
-        printf("Found the file: %s\n", fileInDir->d_name);
+        //printf("Found the file: %s\n", fileInDir->d_name);
 
         readFileToStruct(fileInDir->d_name, dir, &rooms[i]);
         printf("\n");
@@ -204,7 +204,7 @@ int roomConnectsTo(char* name, struct room* room, int len)
 
 int main()
 {
-  int i, j;
+  int i, j, n_visited_rooms = 0, n_steps_taken = 0;
   struct room* rooms = malloc(N_ROOMS*sizeof(struct room));
   struct room* current_room;
   size_t userin_s = 100;
@@ -212,6 +212,8 @@ int main()
   char* dir; 
   char* userin = malloc(userin_s * sizeof(char));
   char* userin2[100];
+  char* visited_rooms[100];
+
 
   dir = getNewestDir();
   readFilesFromDir(dir, rooms);
@@ -223,6 +225,8 @@ int main()
   {
     memset(userin2, "\0", 100);
     memset(userin, "\0", 100);
+
+
     printf("CURRENT LOCATION: %s\nPOSSIBLE CONNECTIONS: ", current_room->name);
 
     for (i = 0; i < current_room->nConnsOut; i++)
@@ -249,6 +253,14 @@ int main()
     if (roomConnectsTo(userin2, current_room, readlen - 1) == 0)
     {
       current_room = getRoomByName(userin2, readlen - 1, rooms);
+
+      n_steps_taken++;
+
+      if (n_steps_taken > 0)
+      {
+        visited_rooms[n_steps_taken - 1] = malloc(10 * sizeof(char));
+        strcpy(visited_rooms[n_steps_taken - 1], current_room->name);
+      }
     }
     else
     {
@@ -256,7 +268,12 @@ int main()
     }
   }
 
+  printf("YOU HAVE FOUND THE END ROOM. CONGRATULATIONS!\nYOU TOOK %i STEPS. YOUR PATH TO VICTORY WAS:\n", n_steps_taken);
 
+  for (i = 0; i < n_steps_taken; i++)
+  {
+    printf("%s\n", visited_rooms[i]);
+  }
 
   for (i = 0; i < N_ROOMS; i++)
   {
@@ -269,4 +286,6 @@ int main()
   free(rooms);
   free(dir);
   free(userin);
+
+//  return 0;
 }
