@@ -93,7 +93,7 @@ void readFileToStruct(char* filename, char* dir, struct room* new_room)
   chdir(dir);
    
   // I was looking for a way to read an entire file into a C string, and discovered
-  // that directly memory-mapping files was very simple
+  // that directly memory-mapping files is very simple
   int room_file_fd = open(filename, O_RDONLY);
   int room_file_len = lseek(room_file_fd, 0, SEEK_END);
   char* room_file = mmap(0, room_file_len, PROT_READ, MAP_PRIVATE, room_file_fd, 0);
@@ -101,10 +101,12 @@ void readFileToStruct(char* filename, char* dir, struct room* new_room)
   // Look for the second space on line 1
   where = strpbrk(room_file, " ");
   where = strpbrk(where + 1, " ");
-  where++;
-  in_len = strcspn(where, "\n");
+  where++; // go one character beyond that space
+  in_len = strcspn(where, "\n"); // the length of the "name" string is from here to the end of the line
   strncpy(new_room->name, where, in_len);
 
+  // As long as the string "CONNECTION" appear somewhere ahead of the current position,
+  // continue reading connection names
   while (strstr(where, "CONNECTION") != 0)
   {
     where = strpbrk(where, " ");
@@ -117,13 +119,12 @@ void readFileToStruct(char* filename, char* dir, struct room* new_room)
     i++;
   }
 
+  // Finally, read the room type
   where = strpbrk(where, " ");
   where = strpbrk(where + 1, " ");
   where++;
   in_len = strcspn(where, "\n");
   strncpy(new_room->type, where, in_len);
-
-  //printRoomInfo(*new_room);
 
   close(room_file_fd);
 }
@@ -154,27 +155,106 @@ void readFilesFromDir(char* dir, struct room* rooms)
   return rooms;
 }
 
+struct room* getStartRoom(struct room* rooms)
+{
+  int i;
+
+  for (i = 0; i < N_ROOMS; i++)
+  {
+    if (strcmp(rooms[i].type, "START_ROOM") == 0)
+    {
+      return &rooms[i];
+    }
+  }
+}
+
+struct room* getRoomByName(char* name, int name_len, struct room* rooms)
+{
+  int i;
+
+  for (i = 0; i < N_ROOMS; i++)
+  {
+   // printf("[getRoomByName] iter %i\n", i);
+    if (strncmp(rooms[i].name, name, name_len) == 0)
+    {
+      return &rooms[i];
+    }
+  }
+}
+
+int roomConnectsTo(char* name, struct room* room, int len)
+{
+  int i;
+
+  for (i = 0; i < room->nConnsOut; i++)
+  {
+    //printf("comparing '%s' with '%s'\n", name, room->connsOut[i]);
+
+    if (strncmp(room->connsOut[i], name, len) == 0)
+    {
+     // printf("yes\n");
+      return 0;
+    }
+  }
+
+  //printf("no\n");
+  return 1;
+}
+
 
 int main()
 {
   int i, j;
   struct room* rooms = malloc(N_ROOMS*sizeof(struct room));
-  char* dir;
+  struct room* current_room;
+  size_t userin_s = 100;
+  size_t readlen;
+  char* dir; 
+  char* userin = malloc(userin_s * sizeof(char));
+  char* userin2[100];
+
   dir = getNewestDir();
-
-//  for (i = 0; i < N_ROOMS; i++)
-//  {
-//    for (j = 0; j < 6; j++)
-//    {
-//      rooms[i].connsOut[j] = malloc(10*sizeof(char));
-//    }
-//  }
-
-  printf("\n");
-  //printRoomInfo(rooms[0]);
-
   readFilesFromDir(dir, rooms);
   printRoomsInfo(rooms);
+
+  current_room = getStartRoom(rooms);
+  
+  while (strcmp(current_room->type, "END_ROOM") != 0)
+  {
+    memset(userin2, "\0", 100);
+    memset(userin, "\0", 100);
+    printf("CURRENT LOCATION: %s\nPOSSIBLE CONNECTIONS: ", current_room->name);
+
+    for (i = 0; i < current_room->nConnsOut; i++)
+    {
+      printf("%s", current_room->connsOut[i]);
+
+      if (i == current_room->nConnsOut - 1)
+      {
+        printf(".\n");
+      }
+      else
+      {
+        printf(", ");
+      }
+    }
+
+    printf("WHERE TO? >");
+
+    readlen = getline(&userin, &userin_s, stdin);
+    strncpy(userin2, userin, readlen - 1);
+    //printf("got string %s from user of len %i\n", userin2, readlen - 1);
+    printf("\n");
+
+    if (roomConnectsTo(userin2, current_room, readlen - 1) == 0)
+    {
+      current_room = getRoomByName(userin2, readlen - 1, rooms);
+    }
+    else
+    {
+      printf("HUH? I DON'T UNDERSTAND THAT ROOM. TRY AGAIN.\n\n");
+    }
+  }
 
 
 
@@ -185,6 +265,8 @@ int main()
       free(rooms[i].connsOut[j]);
     }
   }
+
   free(rooms);
   free(dir);
+  free(userin);
 }
