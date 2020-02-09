@@ -4,9 +4,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <time.h>
+#define N_ROOMS 7
 
 enum roomType{START_ROOM, END_ROOM, MID_ROOM};
-static int N_ROOMS = 7;
 
 struct room
 {
@@ -38,13 +38,43 @@ void initRoomNames(struct room* rooms, char** roomNamesPossible)
 {
   int i;
   int j;
+  int k;
+  int dont_duplicate[N_ROOMS] = { -1, -1, -1, -1, -1, -1, -1};
+  int not_a_duplicate = 1; // 0 = true, 1 = false
+  int j_count = 0;
 
-  for (i = 0; i < 7; i++)
+  // For every room in the rooms array, assign a random name to it
+  for (i = 0; i < N_ROOMS; i++)
   {
-   // struct room temp;
-    //rooms[i] = temp;
+    not_a_duplicate = 1;
     j = getRandInt(0, 9);
-    //dup check here
+    dont_duplicate[i] = j;
+    
+    // Until we've verified that the room name picked isn't a duplicate
+    while (! not_a_duplicate == 0)
+    {
+      j_count = 0;
+
+      // For all elements in the dont_duplicate array
+      for (k = 0; k < N_ROOMS; k++)
+      {
+        if(j == dont_duplicate[k])
+        {
+          j_count++;
+        }
+      }
+
+      if (j_count > 1)
+      {
+        j = getRandInt(0, 9);
+        dont_duplicate[i] = j;
+      }
+      else
+      {
+        not_a_duplicate = 0;
+      }
+    }
+
     strcpy(rooms[i].name, roomNamesPossible[j]);
   }
 }
