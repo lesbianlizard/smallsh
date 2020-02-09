@@ -226,8 +226,12 @@ void writeRoomToFile(char* filename, struct room* room)
 int main()
 {
   srand(time(NULL));
-  char* dirname = "reesestr.rooms.PIDHERE";
   char room_filename[100];
+  char dirname[50] = "reesestr.rooms.";
+  char pid[10];
+
+  sprintf(pid, "%i", getpid()); 
+  strcat(dirname, pid);
   mkdir(dirname, 0755);
   int i;
 
