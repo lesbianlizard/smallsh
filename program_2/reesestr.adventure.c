@@ -7,6 +7,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <sys/mman.h>
+#include <fcntl.h>
 #define N_ROOMS 7
 
 struct room
@@ -15,6 +17,10 @@ struct room
   char type[11];
   int nConnsOut;
   struct room* connsOut[6];
+
+  // temporary storage for connections before converting them to the connsOut array
+  int nFakeConns;
+  char* fakeConns[6];
 };
 
 
@@ -58,13 +64,27 @@ char* getNewestDir()
   return newestDirName;
 }
 
+struct room readFileToStruct(char* filename, char* dir)
+{
+  int i;
+  chdir(dir);
+  int room_file_fd = open(filename, O_RDONLY);
+  int room_file_len = lseek(room_file_fd, 0, SEEK_END);
+  char* data = mmap(0, room_file_len, PROT_READ, MAP_PRIVATE, room_file_fd, 0);
+  printf("hi there\n");
+
+  printf("memory mapped file because why not: %s", data);
+
+}
+
 struct room* readFilesFromDir(char* dir) 
 {
   DIR* dirToCheck; // Holds the directory we're starting in
   struct dirent *fileInDir; // Holds the current subdir of the starting dir
-  struct stat dirAttributes; // Holds information we've gained about subdir
-
   dirToCheck = opendir(dir); // Open up the directory this program was run in
+  int i = 0;
+
+  struct room* rooms = malloc(N_ROOMS*sizeof(struct room));
 
   if (dirToCheck > 0) // Make sure the current directory could be opened
   {
@@ -73,14 +93,15 @@ struct room* readFilesFromDir(char* dir)
       if (fileInDir->d_type == DT_REG)
       {
         printf("Found the file: %s\n", fileInDir->d_name);
-        stat(fileInDir->d_name, &dirAttributes); // Get attributes of the entry
+
+        rooms[i] = readFileToStruct(fileInDir->d_name, dir);
+        i++;
       }
     }
   }
 
   closedir(dirToCheck); // Close the directory we opened
-  struct room* asdf;
-  return asdf;
+  return rooms;
 }
 
 
