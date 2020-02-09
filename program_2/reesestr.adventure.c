@@ -64,7 +64,6 @@ char* getNewestDir()
     {
       if (strstr(fileInDir->d_name, targetDirPrefix) != NULL) // If entry has prefix
       {
-        //printf("Found the prefex: %s\n", fileInDir->d_name);
         stat(fileInDir->d_name, &dirAttributes); // Get attributes of the entry
 
         if ((int)dirAttributes.st_mtime > newestDirTime) // If this time is bigger
@@ -72,15 +71,12 @@ char* getNewestDir()
           newestDirTime = (int)dirAttributes.st_mtime;
           memset(newestDirName, '\0', sizeof(newestDirName));
           strcpy(newestDirName, fileInDir->d_name);
-          //printf("Newer subdir: %s, new time: %d\n",
-          //    fileInDir->d_name, newestDirTime);
         }
       }
     }
   }
 
   closedir(dirToCheck); // Close the directory we opened
-  //printf("Newest entry found is: %s\n", newestDirName);
   return newestDirName;
 }
 
@@ -142,17 +138,13 @@ void readFilesFromDir(char* dir, struct room* rooms)
     {
       if (fileInDir->d_type == DT_REG)
       {
-        //printf("Found the file: %s\n", fileInDir->d_name);
-
         readFileToStruct(fileInDir->d_name, dir, &rooms[i]);
-        printf("\n");
         i++;
       }
     }
   }
 
   closedir(dirToCheck); // Close the directory we opened
-  return rooms;
 }
 
 struct room* getStartRoom(struct room* rooms)
@@ -174,7 +166,6 @@ struct room* getRoomByName(char* name, int name_len, struct room* rooms)
 
   for (i = 0; i < N_ROOMS; i++)
   {
-   // printf("[getRoomByName] iter %i\n", i);
     if (strncmp(rooms[i].name, name, name_len) == 0)
     {
       return &rooms[i];
@@ -188,11 +179,8 @@ int roomConnectsTo(char* name, struct room* room, int len)
 
   for (i = 0; i < room->nConnsOut; i++)
   {
-    //printf("comparing '%s' with '%s'\n", name, room->connsOut[i]);
-
     if (strncmp(room->connsOut[i], name, len) == 0)
     {
-     // printf("yes\n");
       return 0;
     }
   }
@@ -204,27 +192,27 @@ int roomConnectsTo(char* name, struct room* room, int len)
 
 int main()
 {
-  int i, j, n_visited_rooms = 0, n_steps_taken = 0;
+  int i, j,  n_steps_taken = 0;
   struct room* rooms = malloc(N_ROOMS*sizeof(struct room));
   struct room* current_room;
   size_t userin_s = 100;
   size_t readlen;
   char* dir; 
   char* userin = malloc(userin_s * sizeof(char));
-  char* userin2[100];
+  char userin2[100];
   char* visited_rooms[100];
 
 
   dir = getNewestDir();
   readFilesFromDir(dir, rooms);
-  printRoomsInfo(rooms);
+  //printRoomsInfo(rooms);
 
   current_room = getStartRoom(rooms);
   
   while (strcmp(current_room->type, "END_ROOM") != 0)
   {
-    memset(userin2, "\0", 100);
-    memset(userin, "\0", 100);
+    memset(userin2, "\0", 100*sizeof(char));
+    memset(userin, "\0", 100*sizeof(char));
 
 
     printf("CURRENT LOCATION: %s\nPOSSIBLE CONNECTIONS: ", current_room->name);
@@ -247,7 +235,6 @@ int main()
 
     readlen = getline(&userin, &userin_s, stdin);
     strncpy(userin2, userin, readlen - 1);
-    //printf("got string %s from user of len %i\n", userin2, readlen - 1);
     printf("\n");
 
     if (roomConnectsTo(userin2, current_room, readlen - 1) == 0)
@@ -273,6 +260,7 @@ int main()
   for (i = 0; i < n_steps_taken; i++)
   {
     printf("%s\n", visited_rooms[i]);
+    free(visited_rooms[i]);
   }
 
   for (i = 0; i < N_ROOMS; i++)
@@ -287,5 +275,5 @@ int main()
   free(dir);
   free(userin);
 
-//  return 0;
+  return 0;
 }
