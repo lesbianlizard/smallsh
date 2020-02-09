@@ -177,8 +177,6 @@ int main()
   printRoomsInfo(rooms);
 
 
-  free(dir);
-  free(rooms);
 
   for (i = 0; i < N_ROOMS; i++)
   {
@@ -187,4 +185,6 @@ int main()
       free(rooms[i].connsOut[j]);
     }
   }
+  free(rooms);
+  free(dir);
 }
