@@ -124,7 +124,7 @@ int validateConnections(struct room* rooms)
   {
     if (rooms[i].nConnsOut < 3 || rooms[i].nConnsOut > 6)
     {
-      fprintf(stderr, "Invalid nConnsOut=%i for %s room\n", rooms[i].nConnsOut, rooms[i].name);
+      fprintf(stdout, "Invalid nConnsOut=%i for %s room\n", rooms[i].nConnsOut, rooms[i].name);
       problem = 1;
     }
   }
@@ -141,6 +141,22 @@ void connectRooms(struct room* room1, struct room* room2)
   room2->nConnsOut += 1;
 }
 
+int isConnected(struct room* room1, struct room* room2)
+{
+  int is_connected = 0;
+  int i;
+
+  for (i = 0; i < room2->nConnsOut; i++)
+  {
+    if (room1->name == room2->connsOut[i]->name)
+    {
+      is_connected = 1;
+    }
+  }
+
+  return is_connected;
+}
+
 void initRoomConnections(struct room* rooms)
 {
   int i;
@@ -151,19 +167,30 @@ void initRoomConnections(struct room* rooms)
     printf("connection iteration %i\n", connect_iter);
     int* indicies = makeRandomUniqueArray(2, 0, N_ROOMS - 1);
 
-    if (rooms[indicies[0]].nConnsOut < 6 && rooms[indicies[1]].nConnsOut < 6)
+    if (rooms[indicies[0]].nConnsOut < 6
+     && rooms[indicies[1]].nConnsOut < 6
+     && ! isConnected(&rooms[indicies[0]], &rooms[indicies[1]]))
     {
       connectRooms(&rooms[indicies[0]], &rooms[indicies[1]]);
     }
 
     connect_iter++;
     free(indicies);
+    //printRoomsInfo(rooms);
   }
 }
 
 void printRoomInfo(struct room room)
 {
-  printf("name: %s\ntype: %i\nnConnsOut: %i\n", room.name, room.type, room.nConnsOut);
+  int i;
+  printf("name: %s\ntype: %i\nnConnsOut: %i\nconnections: ", room.name, room.type, room.nConnsOut);
+  
+  for (i = 0; i < room.nConnsOut; i++)
+  {
+    printf("%s ", room.connsOut[i]->name);
+  }
+
+  printf("\n");
 }
 
 void printRoomsInfo(struct room* rooms)
