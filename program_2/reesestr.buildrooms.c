@@ -105,6 +105,7 @@ void initRoomTypes(struct room* rooms)
   for (i = 0; i < N_ROOMS; i++)
   {
     rooms[i].type = MID_ROOM;
+    rooms[i].nConnsOut = 0;
   }
 
   rooms[indicies[0]].type = START_ROOM;
@@ -113,9 +114,67 @@ void initRoomTypes(struct room* rooms)
   free(indicies);
 }
 
+// 0 good
+int validateConnections(struct room* rooms)
+{
+  int i;
+  int problem = 0;
+
+  for (i = 0; i < N_ROOMS; i++)
+  {
+    if (rooms[i].nConnsOut < 3 || rooms[i].nConnsOut > 6)
+    {
+      fprintf(stderr, "Invalid nConnsOut=%i for %s room\n", rooms[i].nConnsOut, rooms[i].name);
+      problem = 1;
+    }
+  }
+
+  return problem;
+}
+
+void connectRooms(struct room* room1, struct room* room2)
+{
+  room1->connsOut[room1->nConnsOut] = room2;
+  room2->connsOut[room2->nConnsOut] = room1;
+
+  room1->nConnsOut += 1;
+  room2->nConnsOut += 1;
+}
+
+void initRoomConnections(struct room* rooms)
+{
+  int i;
+  int connect_iter = 0;
+
+  while (! validateConnections(rooms) == 0)
+  {
+    printf("connection iteration %i\n", connect_iter);
+    int* indicies = makeRandomUniqueArray(2, 0, N_ROOMS - 1);
+
+    if (rooms[indicies[0]].nConnsOut < 6 && rooms[indicies[1]].nConnsOut < 6)
+    {
+      connectRooms(&rooms[indicies[0]], &rooms[indicies[1]]);
+    }
+
+    connect_iter++;
+    free(indicies);
+  }
+}
+
 void printRoomInfo(struct room room)
 {
   printf("name: %s\ntype: %i\nnConnsOut: %i\n", room.name, room.type, room.nConnsOut);
+}
+
+void printRoomsInfo(struct room* rooms)
+{
+  int i;
+
+  for (i = 0; i < N_ROOMS; i++)
+  {
+    printRoomInfo(rooms[i]);
+    printf("\n");
+  }
 }
 
 
@@ -129,13 +188,13 @@ int main()
   struct room rooms[N_ROOMS];
   initRoomNames(rooms, roomNamesPossible);
   initRoomTypes(rooms);
+  initRoomConnections(rooms);
 
   for (i = 0; i < N_ROOMS; i++)
   {
     printRoomInfo(rooms[i]);
     printf("\n");
   }
-//  connectRooms(rooms);
 //
 //  int i;
 //  for (i = 0; i < N_ROOMS; i++)
