@@ -6,7 +6,7 @@
 #include <time.h>
 #define N_ROOMS 7
 
-enum roomType{START_ROOM, END_ROOM, MID_ROOM};
+enum roomType{MID_ROOM, START_ROOM, END_ROOM};
 
 struct room
 {
@@ -64,6 +64,7 @@ void initRoomNames(struct room* rooms, char** roomNamesPossible)
         }
       }
 
+      // Break out of the loop or not, depending whether we've found a non-duplicate name
       if (j_count > 1)
       {
         j = getRandInt(0, 9);
@@ -77,6 +78,68 @@ void initRoomNames(struct room* rooms, char** roomNamesPossible)
 
     strcpy(rooms[i].name, roomNamesPossible[j]);
   }
+}
+
+int* makeRandomUniqueArray(int len, int low, int high)
+{
+  int* result = malloc(len * sizeof(int));
+  int i;
+  int j;
+  int k;
+  int rand;
+  int dup_count;
+  int nodup;
+
+  for (i = 0; i < len; i++)
+  {
+    result[i] = low - 1;
+  }
+
+  for (i = 0; i < len; i++)
+  {
+    nodup = 1;
+    rand = getRandInt(low, high);
+    result[i] = rand;
+    
+    while(! nodup == 0)
+    {
+      dup_count = 0;
+
+      for (k = 0; k < len; k++)
+      {
+        if(rand == result[k])
+        {
+          dup_count++;
+        }
+      }
+
+      if (dup_count > 1)
+      {
+        rand = getRandInt(low, high);
+        result[i] = rand;
+      }
+      else
+      {
+        nodup = 0;
+      }
+    }
+  }
+
+  return result;
+}
+
+void initRoomTypes(struct room* rooms)
+{
+  int i;
+  int* indicies = makeRandomUniqueArray(2, 0, N_ROOMS - 1);
+
+  for (i = 0; i < N_ROOMS; i++)
+  {
+    rooms[i].type = MID_ROOM;
+  }
+
+  rooms[indicies[0]].type = START_ROOM;
+  rooms[indicies[1]].type = END_ROOM;
 }
 
 void printRoomInfo(struct room room)
@@ -94,13 +157,13 @@ int main()
 
   struct room rooms[N_ROOMS];
   initRoomNames(rooms, roomNamesPossible);
+  initRoomTypes(rooms);
 
   for (i = 0; i < N_ROOMS; i++)
   {
     printRoomInfo(rooms[i]);
     printf("\n");
   }
-//  initRoomTypes(rooms);
 //  connectRooms(rooms);
 //
 //  int i;
