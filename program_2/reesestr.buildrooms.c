@@ -38,7 +38,6 @@ int* makeRandomUniqueArray(int len, int low, int high)
 {
   int* result = malloc(len * sizeof(int));
   int i;
-  int j;
   int k;
   int rand;
   int dup_count;
@@ -124,7 +123,7 @@ int validateConnections(struct room* rooms)
   {
     if (rooms[i].nConnsOut < 3 || rooms[i].nConnsOut > 6)
     {
-      fprintf(stdout, "Invalid nConnsOut=%i for %s room\n", rooms[i].nConnsOut, rooms[i].name);
+      //fprintf(stdout, "Invalid nConnsOut=%i for %s room\n", rooms[i].nConnsOut, rooms[i].name);
       problem = 1;
     }
   }
@@ -159,12 +158,11 @@ int isConnected(struct room* room1, struct room* room2)
 
 void initRoomConnections(struct room* rooms)
 {
-  int i;
   int connect_iter = 0;
 
   while (! validateConnections(rooms) == 0)
   {
-    printf("connection iteration %i\n", connect_iter);
+    //printf("connection iteration %i\n", connect_iter);
     int* indicies = makeRandomUniqueArray(2, 0, N_ROOMS - 1);
 
     if (rooms[indicies[0]].nConnsOut < 6
@@ -240,11 +238,11 @@ int main()
   initRoomTypes(rooms);
   initRoomConnections(rooms);
 
-  for (i = 0; i < N_ROOMS; i++)
-  {
-    printRoomInfo(rooms[i]);
-    printf("\n");
-  }
+//  for (i = 0; i < N_ROOMS; i++)
+//  {
+//    printRoomInfo(rooms[i]);
+//    printf("\n");
+//  }
 
   for (i = 0; i < N_ROOMS; i++)
   {
@@ -252,7 +250,7 @@ int main()
     strcat(room_filename, "/");
     strcat(room_filename, rooms[i].name);
     strcat(room_filename, "_room");
-    printf("room_filename: %s\n", room_filename);
+    //printf("room_filename: %s\n", room_filename);
     
     writeRoomToFile(room_filename, &rooms[i]); 
   }
