@@ -34,52 +34,6 @@ int getRandInt(int low, int high)
   return (rand() % (high - low + 1)) + low;
 }
 
-void initRoomNames(struct room* rooms, char** roomNamesPossible)
-{
-  int i;
-  int j;
-  int k;
-  int dont_duplicate[N_ROOMS] = { -1, -1, -1, -1, -1, -1, -1};
-  int not_a_duplicate = 1; // 0 = true, 1 = false
-  int j_count = 0;
-
-  // For every room in the rooms array, assign a random name to it
-  for (i = 0; i < N_ROOMS; i++)
-  {
-    not_a_duplicate = 1;
-    j = getRandInt(0, 9);
-    dont_duplicate[i] = j;
-    
-    // Until we've verified that the room name picked isn't a duplicate
-    while (! not_a_duplicate == 0)
-    {
-      j_count = 0;
-
-      // For all elements in the dont_duplicate array
-      for (k = 0; k < N_ROOMS; k++)
-      {
-        if(j == dont_duplicate[k])
-        {
-          j_count++;
-        }
-      }
-
-      // Break out of the loop or not, depending whether we've found a non-duplicate name
-      if (j_count > 1)
-      {
-        j = getRandInt(0, 9);
-        dont_duplicate[i] = j;
-      }
-      else
-      {
-        not_a_duplicate = 0;
-      }
-    }
-
-    strcpy(rooms[i].name, roomNamesPossible[j]);
-  }
-}
-
 int* makeRandomUniqueArray(int len, int low, int high)
 {
   int* result = malloc(len * sizeof(int));
@@ -128,6 +82,21 @@ int* makeRandomUniqueArray(int len, int low, int high)
   return result;
 }
 
+void initRoomNames(struct room* rooms, char** roomNamesPossible)
+{
+  int i;
+  int* indicies = makeRandomUniqueArray(N_ROOMS, 0, 9);
+
+  // For every room in the rooms array, assign a random name to it
+  for (i = 0; i < N_ROOMS; i++)
+  {
+    strcpy(rooms[i].name, roomNamesPossible[indicies[i]]);
+  }
+
+  free(indicies);
+}
+
+
 void initRoomTypes(struct room* rooms)
 {
   int i;
@@ -140,6 +109,8 @@ void initRoomTypes(struct room* rooms)
 
   rooms[indicies[0]].type = START_ROOM;
   rooms[indicies[1]].type = END_ROOM;
+
+  free(indicies);
 }
 
 void printRoomInfo(struct room room)
