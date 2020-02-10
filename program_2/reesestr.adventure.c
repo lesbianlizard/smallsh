@@ -210,7 +210,7 @@ void* writeTimeToFile(void* mutex)
 
   t = time(NULL);
   tmp = localtime(&t);
-  strftime(current_time, sizeof(current_time), "%l:%m%p, %A, %B %d, %Y", tmp);
+  strftime(current_time, sizeof(current_time), "%l:%M%p, %A, %B %d, %Y", tmp);
 
   room_file = fopen("currentTime.txt", "w");
   fprintf(room_file, "%s", current_time);
