@@ -19,6 +19,7 @@ struct room
   char* connsOut[6];
 };
 
+// Prints information about a room to stdout, only used for debugging
 void printRoomInfo(struct room room)
 {
   int i;
@@ -32,6 +33,7 @@ void printRoomInfo(struct room room)
   printf("\n");
 }
 
+// Prints information about an array of rooms to stdout, only used for debugging
 void printRoomsInfo(struct room* rooms)
 {
   int i;
@@ -80,18 +82,21 @@ char* getNewestDir()
   return newestDirName;
 }
 
+// Converts a room file into a room struct
 void readFileToStruct(char* filename, char* dir, struct room* new_room)
 {
   int i=0;
   int in_len;
   char* where;
 
+  // Change working directory to be able to use relative file paths
   chdir(dir);
    
   // I was looking for a way to read an entire file into a C string, and discovered
   // that directly memory-mapping files is very simple
   int room_file_fd = open(filename, O_RDONLY);
   int room_file_len = lseek(room_file_fd, 0, SEEK_END);
+  // Effectively, room_file is a C string containing the entire file at dir/filename.
   char* room_file = mmap(0, room_file_len, PROT_READ, MAP_PRIVATE, room_file_fd, 0);
 
   // Look for the second space on line 1
@@ -125,6 +130,7 @@ void readFileToStruct(char* filename, char* dir, struct room* new_room)
   close(room_file_fd);
 }
 
+// Heavily modified from example on Canvas
 void readFilesFromDir(char* dir, struct room* rooms) 
 {
   DIR* dirToCheck; // Holds the directory we're starting in
@@ -153,6 +159,7 @@ struct room* getStartRoom(struct room* rooms)
 
   for (i = 0; i < N_ROOMS; i++)
   {
+    // Find the start room and return it
     if (strcmp(rooms[i].type, "START_ROOM") == 0)
     {
       return &rooms[i];
@@ -166,6 +173,7 @@ struct room* getRoomByName(char* name, int name_len, struct room* rooms)
 
   for (i = 0; i < N_ROOMS; i++)
   {
+    // Find a room with the speficied name and return it.
     if (strncmp(rooms[i].name, name, name_len) == 0)
     {
       return &rooms[i];
@@ -179,13 +187,14 @@ int roomConnectsTo(char* name, struct room* room, int len)
 
   for (i = 0; i < room->nConnsOut; i++)
   {
+    // If specified name is in the room's list of connections, return 0
     if (strncmp(room->connsOut[i], name, len) == 0)
     {
       return 0;
     }
   }
 
-  //printf("no\n");
+  // If not, return 1
   return 1;
 }
 
@@ -203,12 +212,15 @@ int main()
   char* visited_rooms[100];
 
 
+  // Determine newest directory and read them into memory
   dir = getNewestDir();
   readFilesFromDir(dir, rooms);
   //printRoomsInfo(rooms);
 
+  // Start in the start room.
   current_room = getStartRoom(rooms);
   
+  // Until user has found the end room, loop:
   while (strcmp(current_room->type, "END_ROOM") != 0)
   {
     memset(userin2, "\0", 100*sizeof(char));
@@ -217,10 +229,12 @@ int main()
 
     printf("CURRENT LOCATION: %s\nPOSSIBLE CONNECTIONS: ", current_room->name);
 
+    // Print connections from current room
     for (i = 0; i < current_room->nConnsOut; i++)
     {
       printf("%s", current_room->connsOut[i]);
 
+      // Fancy punctuation
       if (i == current_room->nConnsOut - 1)
       {
         printf(".\n");
@@ -233,16 +247,20 @@ int main()
 
     printf("WHERE TO? >");
 
+    // Read something from user
     readlen = getline(&userin, &userin_s, stdin);
+    // Truncate the newline character from end of string
     strncpy(userin2, userin, readlen - 1);
     printf("\n");
 
+    // Check whether the user's input is the name of one of the current room's connections
     if (roomConnectsTo(userin2, current_room, readlen - 1) == 0)
     {
+      // Go to that room
       current_room = getRoomByName(userin2, readlen - 1, rooms);
-
       n_steps_taken++;
 
+      // Add room we just entered to visited_rooms array
       if (n_steps_taken > 0)
       {
         visited_rooms[n_steps_taken - 1] = malloc(10 * sizeof(char));
@@ -251,18 +269,22 @@ int main()
     }
     else
     {
+      // Do nothing
       printf("HUH? I DON'T UNDERSTAND THAT ROOM. TRY AGAIN.\n\n");
     }
   }
 
+  // You won!
   printf("YOU HAVE FOUND THE END ROOM. CONGRATULATIONS!\nYOU TOOK %i STEPS. YOUR PATH TO VICTORY WAS:\n", n_steps_taken);
 
+  // Print the path to victory
   for (i = 0; i < n_steps_taken; i++)
   {
     printf("%s\n", visited_rooms[i]);
     free(visited_rooms[i]);
   }
 
+  // deallocate dynamic memory
   for (i = 0; i < N_ROOMS; i++)
   {
     for (j = 0; j < rooms[i].nConnsOut; j++)
