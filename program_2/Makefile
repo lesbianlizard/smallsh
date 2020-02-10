@@ -5,7 +5,7 @@ buildrooms: reesestr.buildrooms.c
 	$(C) $(CFLAGS) -o reesestr.buildrooms reesestr.buildrooms.c
 
 adventure: reesestr.adventure.c
-	$(C) $(CFLAGS) -o reesestr.adventure reesestr.adventure.c
+	$(C) $(CFLAGS) -lpthread -o reesestr.adventure reesestr.adventure.c
 
 rooms: buildrooms
 	./reesestr.buildrooms

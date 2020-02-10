@@ -9,6 +9,7 @@
 #include <dirent.h>
 #include <sys/mman.h>
 #include <fcntl.h>
+#include <pthread.h>
 #define N_ROOMS 7
 
 struct room
@@ -128,6 +129,7 @@ void readFileToStruct(char* filename, char* dir, struct room* new_room)
   strncpy(new_room->type, where, in_len);
 
   close(room_file_fd);
+  chdir("..");
 }
 
 // Heavily modified from example on Canvas
@@ -198,6 +200,36 @@ int roomConnectsTo(char* name, struct room* room, int len)
   return 1;
 }
 
+void* writeTimeToFile(void* mutex)
+{
+  FILE* room_file;
+  time_t t;
+  struct tm* tmp;
+  char current_time[50];
+  pthread_mutex_lock(mutex);
+
+  t = time(NULL);
+  tmp = localtime(&t);
+  strftime(current_time, sizeof(current_time), "%l:%m%p, %A, %B %d, %Y", tmp);
+
+  room_file = fopen("currentTime.txt", "w");
+  fprintf(room_file, "%s", current_time);
+  fclose(room_file);
+
+  pthread_mutex_unlock(mutex);
+  return NULL;
+}
+
+void printTimeFromFile()
+{
+  int file_fd = open("currentTime.txt", O_RDONLY);
+  int file_len = lseek(file_fd, 0, SEEK_END);
+  char* file = mmap(0, file_len, PROT_READ, MAP_PRIVATE, file_fd, 0);
+
+  printf("%s\n\n", file);
+
+  close(file_fd);
+}
 
 int main()
 {
@@ -211,6 +243,12 @@ int main()
   char userin2[100];
   char* visited_rooms[100];
 
+  // create a pthread thread
+  pthread_t threads[1];
+  // create a mutex and lock it
+  pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+  pthread_mutex_lock(&mutex);
+
 
   // Determine newest directory and read them into memory
   dir = getNewestDir();
@@ -219,6 +257,9 @@ int main()
 
   // Start in the start room.
   current_room = getStartRoom(rooms);
+
+  // Spawn the initial time thread
+  pthread_create(&threads[0], NULL, writeTimeToFile, &mutex);
   
   // Until user has found the end room, loop:
   while (strcmp(current_room->type, "END_ROOM") != 0)
@@ -254,23 +295,41 @@ int main()
     printf("\n");
 
     // Check whether the user's input is the name of one of the current room's connections
-    if (roomConnectsTo(userin2, current_room, readlen - 1) == 0)
+    if (strncmp(userin2, "time", readlen - 1) == 0)
     {
-      // Go to that room
-      current_room = getRoomByName(userin2, readlen - 1, rooms);
-      n_steps_taken++;
+      // Unlock the mutex, allowing the time thread to proceed
+      pthread_mutex_unlock(&mutex);
+      // Wait for the thread to complete
+      pthread_join(threads[0], NULL);
 
-      // Add room we just entered to visited_rooms array
-      if (n_steps_taken > 0)
-      {
-        visited_rooms[n_steps_taken - 1] = malloc(10 * sizeof(char));
-        strcpy(visited_rooms[n_steps_taken - 1], current_room->name);
-      }
+      // Read from the file just created
+      printTimeFromFile();
+
+      // Relock the mutex
+      pthread_mutex_lock(&mutex);
+      // Spawn a new time thread
+      pthread_create(&threads[0], NULL, writeTimeToFile, &mutex);
     }
     else
     {
-      // Do nothing
-      printf("HUH? I DON'T UNDERSTAND THAT ROOM. TRY AGAIN.\n\n");
+      if (roomConnectsTo(userin2, current_room, readlen - 1) == 0)
+      {
+        // Go to that room
+        current_room = getRoomByName(userin2, readlen - 1, rooms);
+        n_steps_taken++;
+
+        // Add room we just entered to visited_rooms array
+        if (n_steps_taken > 0)
+        {
+          visited_rooms[n_steps_taken - 1] = malloc(10 * sizeof(char));
+          strcpy(visited_rooms[n_steps_taken - 1], current_room->name);
+        }
+      }
+      else
+      {
+        // Do nothing
+        printf("HUH? I DON'T UNDERSTAND THAT ROOM. TRY AGAIN.\n\n");
+      }
     }
   }
 
