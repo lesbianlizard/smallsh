@@ -207,6 +207,7 @@ void* writeTimeToFile(void* mutex)
   struct tm* tmp;
   char current_time[50];
   pthread_mutex_lock(mutex);
+  pthread_testcancel();
 
   t = time(NULL);
   tmp = localtime(&t);
@@ -355,6 +356,10 @@ int main()
   free(rooms);
   free(dir);
   free(userin);
+
+  pthread_cancel(threads[0]);
+  pthread_mutex_unlock(&mutex);
+  pthread_join(threads[0], NULL);
 
   return 0;
 }
