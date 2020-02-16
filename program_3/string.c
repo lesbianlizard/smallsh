@@ -41,6 +41,8 @@ void pushStrs(Strs* strs, char* new_string)
   strs->used++;
 }
 
+// Find the first occurence of search in strs and return its index.
+// Return -1 if search is not in strs.
 int containsStrs(Strs* strs, char* search)
 {
   int i;

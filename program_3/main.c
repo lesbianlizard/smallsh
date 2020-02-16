@@ -169,29 +169,22 @@ int main(int argc, char** argv)
       }
       else // Run user-specified commands
       {
-        for (i = 0; i < cline->used; i++)
+        // Run command in background
+        if (containsStrs(cline, "&") == cline->used - 1)
         {
-          if (i == cline->used - 1)
-          {
-            // Execute command in background
-            if (strcmp(cline->d[i], "&") == 0)
-            {
-              special_funcs |= EXEC_BG;
-            }
-          }
-          else
-          {
-            // Redirect file to stdin
-            if (strcmp(cline->d[i], "<") == 0)
-            {
-              special_funcs |= FILE_TO_STDIN;
-            }
-            // Redirect stdout to file
-            else if (strcmp(cline->d[i], ">") == 0);
-            {
-              special_funcs |= STDOUT_TO_FILE;
-            }
-          }
+          special_funcs |= EXEC_BG;
+        }
+
+        // Redirect file to stdin
+        if ((containsStrs(cline, "<") > -1) && (containsStrs(cline, "<") < cline->used - 1))
+        {
+          special_funcs |= FILE_TO_STDIN;
+        }
+
+        // Redirect stdout to file
+        if ((containsStrs(cline, ">") > -1) && (containsStrs(cline, ">") < cline->used - 1))
+        {
+          special_funcs |= STDOUT_TO_FILE;
         }
 
         pushStrs(cline, NULL); // add null string to end of args list to make exec() happy
