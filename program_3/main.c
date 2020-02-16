@@ -134,6 +134,7 @@ int main(int argc, char** argv)
       }
       else // Run user-specified commands
       {
+        pushStrs(cline, NULL); // add null string to end of args list to make exec() happy
         spawnpid = fork();
 
         switch (spawnpid)
