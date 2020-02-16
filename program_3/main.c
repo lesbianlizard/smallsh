@@ -89,13 +89,16 @@ int main(int argc, char** argv)
   uid_t uid;
   struct passwd *pw;
   pid_t spawnpid;
-  int waitpid_status;
+  int waitpid_status = 0;
 
   struct sigaction ignore_action = {0}, SIGINT_action = {0};
   ignore_action.sa_handler = SIG_IGN;
   SIGINT_action.sa_handler = catchSIGINT;
   sigfillset(&SIGINT_action.sa_mask);
-  SIGINT_action.sa_flags = 0;
+  // SA_RESTART needs to be enabled for the SIGINT handler, otherwise if SIGINT is recieved while
+  // a foreground process is running, its waitpid() will be interrupted and it will become a zombie
+  // for the life of the shell.
+  SIGINT_action.sa_flags = SA_RESTART;
 
   sigaction(SIGINT, &SIGINT_action, NULL);
 
@@ -175,10 +178,15 @@ int main(int argc, char** argv)
             exit(0);
             break;
           default: // we are the parent
-            printf("I am the parent waiting for my child to exit\n");
+            printf("I am the parent waiting for my child %i to exit\n", spawnpid);
             waitpid(spawnpid, &waitpid_status, 0);
-            printf("I am the parent, and my child just exited\n");
-            exitStatus(&waitpid_status);
+            printf("I am the parent, and my child %i just exited\n", spawnpid);
+
+            if (WIFSIGNALED(waitpid_status))
+            {
+              printf("terminated by signal %i\n", WTERMSIG(waitpid_status));
+            }
+
             break;
         }
       }
