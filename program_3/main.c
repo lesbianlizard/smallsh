@@ -142,7 +142,7 @@ int main(int argc, char** argv)
             printf("fork error, halp!\n");
             break;
           case 0: // we are the child
-            execvp(cline->d[0], &cline->d[1]);
+            execvp(cline->d[0], &cline->d[0]);
           default: // we are the parent
             waitpid(spawnpid, &waitpid_status, 0);
         }
