@@ -104,7 +104,14 @@ int main(int argc, char** argv)
       }
       else if (strcmp(cline->d[0], "cd") == 0)
       {
-        printf("I'd love to cd to %s, but I don't know how.\n", cline->d[1]);
+        if (cline->used == 1)
+        {
+          chdir(getenv("HOME"));
+        }
+        else
+        {
+          chdir(cline->d[1]);
+        }
       }
     }
 
