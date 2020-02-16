@@ -81,6 +81,7 @@ int main(int argc, char** argv)
     wd = getcwd(NULL, 0);
     // FIXME: random sizes...
     prompt = malloc(100 * sizeof(char));
+    memset(prompt, 0, 100 * sizeof(char));
     hostname = malloc(255 * sizeof(char));
     username = malloc(100 * sizeof(char));
     
