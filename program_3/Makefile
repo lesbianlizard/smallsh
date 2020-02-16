@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -ggdb -std=gnu11 -lreadline
+CFLAGS = -ggdb -Wall -std=gnu11 -lreadline
 
 smallsh: main.c
 	$(CC) $(CFLAGS) $< -o $@

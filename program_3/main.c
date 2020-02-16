@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <pwd.h>
+#include <sys/wait.h>
 #include "string.c"
 
 //see execl,execlp,execv,execvp
@@ -70,9 +71,11 @@ int main(int argc, char** argv)
 {
   int i;
   Strs* cline;
-  char* line, *wd, *prompt, *username, *hostname;
+  char* line, *wd, *prompt, *hostname;
   uid_t uid;
   struct passwd *pw;
+  pid_t spawnpid;
+  int waitpid_status;
 
   while (1)
   {
@@ -83,7 +86,6 @@ int main(int argc, char** argv)
     prompt = malloc(100 * sizeof(char));
     memset(prompt, 0, 100 * sizeof(char));
     hostname = malloc(255 * sizeof(char));
-    username = malloc(100 * sizeof(char));
     
     gethostname(hostname, 255);
     uid = geteuid();
@@ -130,6 +132,21 @@ int main(int argc, char** argv)
           chdir(cline->d[1]);
         }
       }
+      else // Run user-specified commands
+      {
+        spawnpid = fork();
+
+        switch (spawnpid)
+        {
+          case -1:
+            printf("fork error, halp!\n");
+            break;
+          case 0: // we are the child
+            execvp(cline->d[0], &cline->d[1]);
+          default: // we are the parent
+            waitpid(spawnpid, &waitpid_status, 0);
+        }
+      }
     }
 
     deallocStrs(cline);
@@ -137,7 +154,6 @@ int main(int argc, char** argv)
     free(line);
     free(wd);
     free(prompt);
-    free(username);
     free(hostname);
   }
 }
