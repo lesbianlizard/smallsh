@@ -146,10 +146,12 @@ int main(int argc, char** argv)
             execvp(cline->d[0], &cline->d[0]);
             printf("I am the child, and I just failed to execute your command\n");
             exit(0);
+            break;
           default: // we are the parent
             printf("I am the parent waiting for my child to exit\n");
             waitpid(spawnpid, &waitpid_status, 0);
             printf("I am the parent, and my child just exited\n");
+            break;
         }
       }
     }
