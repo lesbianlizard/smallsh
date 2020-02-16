@@ -12,6 +12,8 @@
 //#include <pthread.h>
 #include <readline/readline.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
 #include "string.c"
 
 //see execl,execlp,execv,execvp
@@ -68,14 +70,28 @@ int main(int argc, char** argv)
 {
   int i;
   Strs* cline;
-  char* line, *wd, *prompt;
+  char* line, *wd, *prompt, *username, *hostname;
+  uid_t uid;
+  struct passwd *pw;
 
   while (1)
   {
     cline = malloc(sizeof(Strs));
     initStrs(cline);
     wd = getcwd(NULL, 0);
+    // FIXME: random sizes...
     prompt = malloc(100 * sizeof(char));
+    hostname = malloc(255 * sizeof(char));
+    username = malloc(100 * sizeof(char));
+    
+    gethostname(hostname, 255);
+    uid = geteuid();
+    pw = getpwuid(uid);
+
+    strcat(prompt, pw->pw_name);
+    strcat(prompt, "@");
+    strcat(prompt, hostname);
+    strcat(prompt, " ");
     strcat(prompt, wd);
     strcat(prompt, " : ");
 
@@ -120,5 +136,7 @@ int main(int argc, char** argv)
     free(line);
     free(wd);
     free(prompt);
+    free(username);
+    free(hostname);
   }
 }
