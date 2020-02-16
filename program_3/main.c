@@ -15,7 +15,12 @@
 #include <sys/types.h>
 #include <pwd.h>
 #include <sys/wait.h>
+#include <stdint.h>
 #include "string.c"
+
+#define FILE_TO_STDIN  0b10000000
+#define STDOUT_TO_FILE 0b01000000
+#define EXEC_BG        0b00000001
 
 //see execl,execlp,execv,execvp
 
@@ -84,6 +89,7 @@ void exitStatus(int* waitpid_status)
 int main(int argc, char** argv)
 {
   int i;
+  uint8_t special_funcs = 0;
   Strs* cline;
   char* line, *wd, *prompt, *hostname;
   uid_t uid;
@@ -163,6 +169,31 @@ int main(int argc, char** argv)
       }
       else // Run user-specified commands
       {
+        for (i = 0; i < cline->used; i++)
+        {
+          if (i == cline->used - 1)
+          {
+            // Execute command in background
+            if (strcmp(cline->d[i], "&") == 0)
+            {
+              special_funcs |= EXEC_BG;
+            }
+          }
+          else
+          {
+            // Redirect file to stdin
+            if (strcmp(cline->d[i], "<") == 0)
+            {
+              special_funcs |= FILE_TO_STDIN;
+            }
+            // Redirect stdout to file
+            else if (strcmp(cline->d[i], ">") == 0);
+            {
+              special_funcs |= STDOUT_TO_FILE;
+            }
+          }
+        }
+
         pushStrs(cline, NULL); // add null string to end of args list to make exec() happy
         spawnpid = fork();
 
@@ -173,7 +204,7 @@ int main(int argc, char** argv)
             break;
           case 0: // we are the child
             printf("I am the child trying to execute your command '%s'\n", cline->d[0]);
-            execvp(cline->d[0], &cline->d[0]);
+            execvp(cline->d[0], cline->d);
             printf("I am the child, and I just failed to execute your command\n");
             exit(0);
             break;

@@ -40,3 +40,18 @@ void pushStrs(Strs* strs, char* new_string)
   strs->d[strs->used] = new_string;
   strs->used++;
 }
+
+int containsStrs(Strs* strs, char* search)
+{
+  int i;
+
+  for (i = 0; i < strs->used; i++)
+  {
+    if (strcmp(search, strs->d[i]) == 0)
+    {
+      return i;
+    }
+  }
+  
+  return -1;
+}
