@@ -142,9 +142,14 @@ int main(int argc, char** argv)
             printf("fork error, halp!\n");
             break;
           case 0: // we are the child
+            printf("I am the child trying to execute your command '%s'\n", cline->d[0]);
             execvp(cline->d[0], &cline->d[0]);
+            printf("I am the child, and I just failed to execute your command\n");
+            exit(0);
           default: // we are the parent
+            printf("I am the parent waiting for my child to exit\n");
             waitpid(spawnpid, &waitpid_status, 0);
+            printf("I am the parent, and my child just exited\n");
         }
       }
     }
