@@ -95,20 +95,23 @@ int main(int argc, char** argv)
     }
     
 
-    if (strcmp(cline->d[0], "exit") == 0)
+    if (cline->used > 0)
     {
-      printf("Exiting smallsh.\n");
-      exit(0);
-    }
-    else if (strcmp(cline->d[0], "cd") == 0)
-    {
-      printf("I'd love to cd to %s, but I don't know how.\n", cline->d[1]);
+      if (strcmp(cline->d[0], "exit") == 0)
+      {
+        printf("Exiting smallsh.\n");
+        exit(0);
+      }
+      else if (strcmp(cline->d[0], "cd") == 0)
+      {
+        printf("I'd love to cd to %s, but I don't know how.\n", cline->d[1]);
+      }
     }
 
     deallocStrs(cline);
     free(cline);
     free(line);
-    //free(wd);
-    //free(prompt);
+    free(wd);
+    free(prompt);
   }
 }
