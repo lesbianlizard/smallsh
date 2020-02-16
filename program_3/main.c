@@ -11,6 +11,7 @@
 //#include <fcntl.h>
 //#include <pthread.h>
 #include <readline/readline.h>
+#include <unistd.h>
 #include "string.c"
 
 //see execl,execlp,execv,execvp
@@ -65,31 +66,49 @@ void parseCLine(char* line, Strs* arr)
 
 int main(int argc, char** argv)
 {
-  Strs* cline = malloc(sizeof(Strs));
-  initStrs(cline);
   int i;
-  char *line = readline ("Enter a line: ");
-  //printf("got the string '%s' from user\n", line);
+  Strs* cline;
+  char* line, *wd, *prompt;
 
-  parseCLine(line, cline);
-
-  for (i = 0; i < cline->used; i++)
+  while (1)
   {
-    printf("user provided argument: '%s' of length %i\n", cline->d[i], strlen(cline->d[i]));
-  }
-  
+    cline = malloc(sizeof(Strs));
+    initStrs(cline);
+    wd = getcwd(NULL, 0);
+    prompt = malloc(100 * sizeof(char));
+    strcat(prompt, wd);
+    strcat(prompt, " : ");
 
-  if (strcmp(line, "exit") == 0)
-  {
-    printf("Exiting smallsh.\n");
-    exit(0);
-  }
-  else if (strcmp(line, "cd") == 0)
-  {
-    printf("I'd love to cd to %s, but I don't know how.\n", line);
-  }
+    line = readline(prompt);
 
-  deallocStrs(cline);
-  free(cline);
-  free(line);
+    if (line == NULL)
+    {
+      printf("readline returned null, probably EOF, exiting\n");
+      exit(0); // FIXME: deallocate memory and stuff before exiting
+    }
+    //printf("You entered '%s'\n", line);
+    parseCLine(line, cline);
+
+    for (i = 0; i < cline->used; i++)
+    {
+      printf("user provided argument: '%s' of length %i\n", cline->d[i], strlen(cline->d[i]));
+    }
+    
+
+    if (strcmp(cline->d[0], "exit") == 0)
+    {
+      printf("Exiting smallsh.\n");
+      exit(0);
+    }
+    else if (strcmp(cline->d[0], "cd") == 0)
+    {
+      printf("I'd love to cd to %s, but I don't know how.\n", cline->d[1]);
+    }
+
+    deallocStrs(cline);
+    free(cline);
+    free(line);
+    //free(wd);
+    //free(prompt);
+  }
 }
