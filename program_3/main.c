@@ -67,6 +67,20 @@ void parseCLine(char* line, Strs* arr)
   }
 }
 
+void catchSIGINT(int signo) {}
+
+void exitStatus(int* waitpid_status)
+{
+  if (WIFSIGNALED(*waitpid_status))
+  {
+    printf("terminated by signal %i\n", WTERMSIG(*waitpid_status));
+  }
+  else
+  {
+    printf("exited with status %i\n", WEXITSTATUS(*waitpid_status));
+  }
+}
+
 int main(int argc, char** argv)
 {
   int i;
@@ -76,6 +90,14 @@ int main(int argc, char** argv)
   struct passwd *pw;
   pid_t spawnpid;
   int waitpid_status;
+
+  struct sigaction ignore_action = {0}, SIGINT_action = {0};
+  ignore_action.sa_handler = SIG_IGN;
+  SIGINT_action.sa_handler = catchSIGINT;
+  sigfillset(&SIGINT_action.sa_mask);
+  SIGINT_action.sa_flags = 0;
+
+  sigaction(SIGINT, &SIGINT_action, NULL);
 
   while (1)
   {
@@ -132,6 +154,10 @@ int main(int argc, char** argv)
           chdir(cline->d[1]);
         }
       }
+      else if (strcmp(cline->d[0], "status") == 0)
+      {
+        exitStatus(&waitpid_status);
+      }
       else // Run user-specified commands
       {
         pushStrs(cline, NULL); // add null string to end of args list to make exec() happy
@@ -152,6 +178,7 @@ int main(int argc, char** argv)
             printf("I am the parent waiting for my child to exit\n");
             waitpid(spawnpid, &waitpid_status, 0);
             printf("I am the parent, and my child just exited\n");
+            exitStatus(&waitpid_status);
             break;
         }
       }
