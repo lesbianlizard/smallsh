@@ -115,6 +115,8 @@ int main(int argc, char** argv)
   struct passwd *pw;
   pid_t spawnpid;
   int waitpid_status = 0;
+  int waitpid_status_bg = 0;
+  int pid_bg = -10;
 
   struct sigaction ignore_action = {0}, SIGINT_action = {0};
   ignore_action.sa_handler = SIG_IGN;
@@ -150,6 +152,32 @@ int main(int argc, char** argv)
     strcat(prompt, " ");
     strcat(prompt, wd);
     strcat(prompt, " : ");
+
+    // Check if children have exited
+    i = waitpid(pid_bg, &waitpid_status_bg, WNOHANG);
+    
+    // Check if any background processes have exited
+    if (i == pid_bg)
+    {
+      if (WIFSIGNALED(waitpid_status_bg))
+      {
+        printf("background pid %i is done: terminated by signal %i\n", pid_bg, WTERMSIG(waitpid_status_bg));
+      }
+      else if (WIFEXITED(waitpid_status_bg))
+      {
+        printf("background pid %i is done: exit value %i\n", pid_bg, WEXITSTATUS(waitpid_status_bg));
+      }
+
+      pid_bg = -10;
+    }
+//    else if (i == 0)
+//    {
+//      printf("background pid %i still running\n", pid_bg);
+//    }
+//    else
+//    {
+//      printf("no background process running\n");
+//    }
 
     line = readline(prompt);
 
@@ -236,6 +264,7 @@ int main(int argc, char** argv)
         }
 
         // Redirect I/O to /dev/null if running in background
+        // and if the user didn't alreay specify I/O redirection
         if (containsStrs(cline, "&") == cline->used - 1)
         {
           special_funcs |= EXEC_BG;
@@ -251,6 +280,8 @@ int main(int argc, char** argv)
           }
         }
 
+        // If I/O redirection or background symbols are in cline, remove them so that
+        // they never get passed to the program to be executed
         if ((containsStrs(cline, "<") > -1) && (containsStrs(cline, "<") < cline->used - 1))
         {
           truncateStrs(cline, containsStrs(cline, "<"));
@@ -280,20 +311,46 @@ int main(int argc, char** argv)
             {
               dup2(fd_stdout, 1);
             }
+            else if (special_funcs & STDOUT_TO_FILE)
+            {
+              // FIXME: print actual filename
+              printf("cannot open file for writing\n");
+              exit(1);
+            }
 
             if (fd_stdin > -1)
             {
               dup2(fd_stdin, 0);
             }
+            else if (special_funcs & FILE_TO_STDIN)
+            {
+              // FIXME: print actual filename
+              printf("cannot open file for input\n");
+              exit(1);
+            }
+
+            if (special_funcs & EXEC_BG)
+            {
+              sigaction(SIGINT, &ignore_action, NULL);
+            }
 
             i = execvp(cline->d[0], cline->d);
             printExecError(i, argv[0]);
             //printf("I am the child, and I just failed to execute your command\n");
-            exit(0);
+            exit(1);
             break;
           default: // we are the parent
             //printf("I am the parent waiting for my child %i to exit\n", spawnpid);
-            waitpid(spawnpid, &waitpid_status, 0);
+            if (special_funcs & EXEC_BG)
+            {
+              waitpid(spawnpid, &waitpid_status_bg, WNOHANG);
+              pid_bg = spawnpid;
+              printf("background pid is %i\n", pid_bg);
+            }
+            else
+            {
+              waitpid(spawnpid, &waitpid_status, 0);
+            }
             //printf("I am the parent, and my child %i just exited\n", spawnpid);
 
             if (WIFSIGNALED(waitpid_status))
