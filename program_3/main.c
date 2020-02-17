@@ -159,11 +159,27 @@ int main(int argc, char** argv)
       exit(0); // FIXME: deallocate memory and stuff before exiting
     }
     //printf("You entered '%s'\n", line);
+
+    // Parse input line into strings by whitespace
     parseCLine(line, cline);
+    // Ignore comments
+    if (containsStrs(cline, "#") > -1)
+    {
+      truncateStrs(cline, containsStrs(cline, "#"));
+    }
 
     for (i = 0; i < cline->used; i++)
     {
-      //printf("user provided argument: '%s' of length %i\n", cline->d[i], strlen(cline->d[i]));
+      if((strncmp(cline->d[i], "##", 1) == 0))
+      {
+        truncateStrs(cline, i);
+        break;
+      }
+    }
+
+    for (i = 0; i < cline->used; i++)
+    {
+      printf("user provided argument: '%s' of length %i\n", cline->d[i], strlen(cline->d[i]));
     }
     
 
@@ -199,13 +215,24 @@ int main(int argc, char** argv)
         {
           special_funcs |= FILE_TO_STDIN;
           fd_stdin = open(cline->d[containsStrs(cline, "<") + 1], O_RDONLY);
+
+          printf("got fd %i for file %s to redirect to stdin\n", fd_stdin, cline->d[containsStrs(cline, "<") + 1]);
         }
 
+        //printf("halp\n");
         // Redirect stdout to file
-        if ((containsStrs(cline, ">") > -1) && (containsStrs(cline, ">") < cline->used - 1))
+        if ((containsStrs(cline, ">") > -1))
         {
-          special_funcs |= STDOUT_TO_FILE;
-          fd_stdout = open(cline->d[containsStrs(cline, ">") + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+         // printf("found >\n");
+
+          if ((containsStrs(cline, ">") < cline->used - 1))
+          {
+          //  printf("found > and it wasn't at end\n");
+            special_funcs |= STDOUT_TO_FILE;
+            fd_stdout = open(cline->d[containsStrs(cline, ">") + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+
+            printf("got fd %i for file %s to redirect to stdin\n", fd_stdout, cline->d[containsStrs(cline, ">") + 1]);
+          }
         }
 
         // Redirect I/O to /dev/null if running in background
