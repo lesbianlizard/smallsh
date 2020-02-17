@@ -179,8 +179,6 @@ int main(int argc, char** argv)
     input_mode = PIPE;
   }
 
-  input_mode = PIPE;
-
   while (1)
   {
     cline = malloc(sizeof(Strs));
