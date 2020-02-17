@@ -179,7 +179,7 @@ int main(int argc, char** argv)
 
     for (i = 0; i < cline->used; i++)
     {
-      printf("user provided argument: '%s' of length %i\n", cline->d[i], strlen(cline->d[i]));
+      //printf("user provided argument: '%s' of length %i\n", cline->d[i], strlen(cline->d[i]));
     }
     
 
