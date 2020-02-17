@@ -206,7 +206,21 @@ int main(int argc, char** argv)
           }
         }
 
+        if ((containsStrs(cline, "<") > -1) && (containsStrs(cline, "<") < cline->used - 1))
+        {
+          truncateStrs(cline, containsStrs(cline, "<"));
+        }
 
+        if ((containsStrs(cline, ">") > -1) && (containsStrs(cline, ">") < cline->used - 1))
+        {
+          truncateStrs(cline, containsStrs(cline, ">"));
+        }
+
+        if (containsStrs(cline, "&") == cline->used - 1)
+        {
+          truncateStrs(cline, containsStrs(cline, "&"));
+        }
+  
         pushStrs(cline, NULL); // add null string to end of args list to make exec() happy
         spawnpid = fork();
 

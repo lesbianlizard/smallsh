@@ -43,9 +43,9 @@ void pushStrs(Strs* strs, char* new_string)
 
 // Find the first occurence of search in strs and return its index.
 // Return -1 if search is not in strs.
-int containsStrs(Strs* strs, char* search)
+size_t containsStrs(Strs* strs, char* search)
 {
-  int i;
+  size_t i;
 
   for (i = 0; i < strs->used; i++)
   {
@@ -56,4 +56,17 @@ int containsStrs(Strs* strs, char* search)
   }
   
   return -1;
+}
+
+void truncateStrs(Strs* strs, size_t idx)
+{
+  size_t i;
+
+  for (i = idx; i < strs->used; i++)
+  {
+    free(strs->d[i]);
+    strs->d[i] = NULL;
+  }
+
+  strs->used = idx - 1;
 }
