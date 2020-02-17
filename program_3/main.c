@@ -29,6 +29,7 @@
 #define EXEC_BG        0b00000001
 
 int bg_enabled = 0;
+int blocked_by_readline = 1;
 sigjmp_buf ctrlc_buf;
 
 //see execl,execlp,execv,execvp
@@ -98,8 +99,10 @@ void printExecError(int exec_code, char* argv0)
 
 void catchSIGINT(int signo)
 {
-  //write(STDOUT_FILENO, "\n", 1);
-  siglongjmp(ctrlc_buf, 1);
+  if (blocked_by_readline == 0)
+  {
+    siglongjmp(ctrlc_buf, 1);
+  }
 }
 
 void catchSIGTSTP(int signo)
@@ -113,6 +116,11 @@ void catchSIGTSTP(int signo)
   {
     //printf("Exiting foreground-only mode %i\n", bg_enabled);
     bg_enabled = 0;
+  }
+
+  if (blocked_by_readline == 0)
+  {
+    siglongjmp(ctrlc_buf, 1);
   }
 }
 
@@ -140,6 +148,7 @@ int main(int argc, char** argv)
   int waitpid_status = 0;
   int waitpid_status_bg = 0;
   int pid_bg = -10;
+  int bg_enabled_prev = 0;
 
 
   struct sigaction ignore_action = {0}, SIGINT_action = {0}, SIGTSTP_action = {0};
@@ -203,6 +212,20 @@ int main(int argc, char** argv)
 
       pid_bg = -10;
     }
+
+    if (! (bg_enabled == bg_enabled_prev))
+    {
+      bg_enabled_prev = bg_enabled;
+
+      if (bg_enabled == 0)
+      {
+        printf("Leaving foreground-only mode \n");
+      }
+      else
+      {
+        printf("Entering foreground-only mode (& is now ignored)\n");
+      }
+    }
 //    else if (i == 0)
 //    {
 //      printf("background pid %i still running\n", pid_bg);
@@ -217,7 +240,9 @@ int main(int argc, char** argv)
 //      printf("something happened\n");
 //    }
 
+    blocked_by_readline = 0;
     line = readline(prompt);
+    blocked_by_readline = 1;
 
 
     if (line == NULL)
