@@ -5,7 +5,7 @@
 //#include <unistd.h>
 //#include <time.h>
 //#include <sys/types.h>
-//#include <sys/stat.h>
+#include <sys/stat.h>
 //#include <dirent.h>
 //#include <sys/mman.h>
 //#include <fcntl.h>
@@ -16,6 +16,7 @@
 #include <pwd.h>
 #include <sys/wait.h>
 #include <stdint.h>
+#include <fcntl.h>
 #include "string.c"
 
 #define FILE_TO_STDIN  0b10000000
@@ -88,7 +89,7 @@ void exitStatus(int* waitpid_status)
 
 int main(int argc, char** argv)
 {
-  int i;
+  int i, fd_stdin, fd_stdout;
   uint8_t special_funcs = 0;
   Strs* cline;
   char* line, *wd, *prompt, *hostname;
@@ -117,6 +118,9 @@ int main(int argc, char** argv)
     prompt = malloc(100 * sizeof(char));
     memset(prompt, 0, 100 * sizeof(char));
     hostname = malloc(255 * sizeof(char));
+    special_funcs = 0;
+    fd_stdin = -2;
+    fd_stdout = -2;
     
     gethostname(hostname, 255);
     uid = geteuid();
@@ -169,23 +173,39 @@ int main(int argc, char** argv)
       }
       else // Run user-specified commands
       {
+        // FIXME: do re really need this special_funcs register?
         // Run command in background
-        if (containsStrs(cline, "&") == cline->used - 1)
-        {
-          special_funcs |= EXEC_BG;
-        }
 
         // Redirect file to stdin
         if ((containsStrs(cline, "<") > -1) && (containsStrs(cline, "<") < cline->used - 1))
         {
           special_funcs |= FILE_TO_STDIN;
+          fd_stdin = open(cline->d[containsStrs(cline, "<") + 1], O_RDONLY);
         }
 
         // Redirect stdout to file
         if ((containsStrs(cline, ">") > -1) && (containsStrs(cline, ">") < cline->used - 1))
         {
           special_funcs |= STDOUT_TO_FILE;
+          fd_stdout = open(cline->d[containsStrs(cline, ">")], O_WRONLY | O_CREAT | O_TRUNC, 0644);
         }
+
+        // Redirect I/O to /dev/null if running in background
+        if (containsStrs(cline, "&") == cline->used - 1)
+        {
+          special_funcs |= EXEC_BG;
+
+          if (! (FILE_TO_STDIN & special_funcs))
+          {
+            fd_stdin = open("/dev/null", O_RDONLY);
+          }
+
+          if (! (STDOUT_TO_FILE & special_funcs))
+          {
+            fd_stdout = open("/dev/null", O_WRONLY);
+          }
+        }
+
 
         pushStrs(cline, NULL); // add null string to end of args list to make exec() happy
         spawnpid = fork();
@@ -197,6 +217,16 @@ int main(int argc, char** argv)
             break;
           case 0: // we are the child
             printf("I am the child trying to execute your command '%s'\n", cline->d[0]);
+            if (fd_stdout > -1)
+            {
+              dup2(fd_stdout, 1);
+            }
+
+            if (fd_stdin > -1)
+            {
+              dup2(fd_stdin, 0);
+            }
+
             execvp(cline->d[0], cline->d);
             printf("I am the child, and I just failed to execute your command\n");
             exit(0);
