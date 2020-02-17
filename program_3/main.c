@@ -17,7 +17,10 @@
 #include <sys/wait.h>
 #include <stdint.h>
 #include <fcntl.h>
+#include <errno.h>
+
 #include "string.c"
+
 
 #define FILE_TO_STDIN  0b10000000
 #define STDOUT_TO_FILE 0b01000000
@@ -71,6 +74,21 @@ void parseCLine(char* line, Strs* arr)
 
     line = strpbrk(line, whitespace);
   }
+}
+
+void printExecError(int exec_code, char* argv0)
+{
+  char* error_str;
+  if (exec_code == EACCES)
+  {
+    error_str = "no such file or directory";
+  }
+  else
+  {
+   error_str = "unhandled exec() error";
+  }
+
+  printf("%s: error: %s\n", argv0, error_str);
 }
 
 void catchSIGINT(int signo) {}
@@ -241,7 +259,8 @@ int main(int argc, char** argv)
               dup2(fd_stdin, 0);
             }
 
-            execvp(cline->d[0], cline->d);
+            i = execvp(cline->d[0], cline->d);
+            printExecError(i, argv[0]);
             //printf("I am the child, and I just failed to execute your command\n");
             exit(0);
             break;
