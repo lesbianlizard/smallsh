@@ -18,6 +18,8 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <signal.h>
+#include <setjmp.h>
 
 #include "string.c"
 
@@ -25,6 +27,9 @@
 #define FILE_TO_STDIN  0b10000000
 #define STDOUT_TO_FILE 0b01000000
 #define EXEC_BG        0b00000001
+
+int bg_enabled = 0;
+sigjmp_buf ctrlc_buf;
 
 //see execl,execlp,execv,execvp
 
@@ -91,7 +96,25 @@ void printExecError(int exec_code, char* argv0)
   printf("%s: error: %s\n", argv0, error_str);
 }
 
-void catchSIGINT(int signo) {}
+void catchSIGINT(int signo)
+{
+  //write(STDOUT_FILENO, "\n", 1);
+  siglongjmp(ctrlc_buf, 1);
+}
+
+void catchSIGTSTP(int signo)
+{
+  if (bg_enabled == 0)
+  {
+    //printf("Entering foreground-only mode (& is now ignored) %i\n", bg_enabled);
+    bg_enabled = 1;
+  }
+  else
+  {
+    //printf("Exiting foreground-only mode %i\n", bg_enabled);
+    bg_enabled = 0;
+  }
+}
 
 void exitStatus(int* waitpid_status)
 {
@@ -118,16 +141,21 @@ int main(int argc, char** argv)
   int waitpid_status_bg = 0;
   int pid_bg = -10;
 
-  struct sigaction ignore_action = {0}, SIGINT_action = {0};
+
+  struct sigaction ignore_action = {0}, SIGINT_action = {0}, SIGTSTP_action = {0};
   ignore_action.sa_handler = SIG_IGN;
-  SIGINT_action.sa_handler = catchSIGINT;
+  SIGINT_action.sa_handler =  catchSIGINT;
+  SIGTSTP_action.sa_handler = catchSIGTSTP;
   sigfillset(&SIGINT_action.sa_mask);
+  sigfillset(&SIGTSTP_action.sa_mask);
   // SA_RESTART needs to be enabled for the SIGINT handler, otherwise if SIGINT is recieved while
   // a foreground process is running, its waitpid() will be interrupted and it will become a zombie
   // for the life of the shell.
-  SIGINT_action.sa_flags = SA_RESTART;
+  SIGINT_action.sa_flags =  SA_RESTART;
+  SIGTSTP_action.sa_flags = SA_RESTART;
 
   sigaction(SIGINT, &SIGINT_action, NULL);
+  sigaction(SIGTSTP, &SIGTSTP_action, NULL);
 
   while (1)
   {
@@ -152,6 +180,11 @@ int main(int argc, char** argv)
     strcat(prompt, " ");
     strcat(prompt, wd);
     strcat(prompt, " : ");
+
+    if (! (sigsetjmp(ctrlc_buf, 1) == 0))
+    {
+      printf("\n");
+    }
 
     // Check if children have exited
     i = waitpid(pid_bg, &waitpid_status_bg, WNOHANG);
@@ -179,7 +212,13 @@ int main(int argc, char** argv)
 //      printf("no background process running\n");
 //    }
 
+//    while (! (sigsetjmp(ctrlc_buf, 1) == 0))
+//    {
+//      printf("something happened\n");
+//    }
+
     line = readline(prompt);
+
 
     if (line == NULL)
     {
@@ -265,7 +304,7 @@ int main(int argc, char** argv)
 
         // Redirect I/O to /dev/null if running in background
         // and if the user didn't alreay specify I/O redirection
-        if (containsStrs(cline, "&") == cline->used - 1)
+        if ((containsStrs(cline, "&") == cline->used - 1) && (bg_enabled == 0))
         {
           special_funcs |= EXEC_BG;
 
@@ -309,7 +348,7 @@ int main(int argc, char** argv)
             //printf("I am the child trying to execute your command '%s'\n", cline->d[0]);
             if (fd_stdout > -1)
             {
-              dup2(fd_stdout, 1);
+              dup2(fd_stdout, STDOUT_FILENO);
             }
             else if (special_funcs & STDOUT_TO_FILE)
             {
@@ -320,7 +359,7 @@ int main(int argc, char** argv)
 
             if (fd_stdin > -1)
             {
-              dup2(fd_stdin, 0);
+              dup2(fd_stdin, STDIN_FILENO);
             }
             else if (special_funcs & FILE_TO_STDIN)
             {
@@ -329,6 +368,10 @@ int main(int argc, char** argv)
               exit(1);
             }
 
+            // Always ignore SIGTSTP
+            sigaction(SIGTSTP, &ignore_action, NULL);
+
+            // If we are in background mode, ignore SIGINT
             if (special_funcs & EXEC_BG)
             {
               sigaction(SIGINT, &ignore_action, NULL);
