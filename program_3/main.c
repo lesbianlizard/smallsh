@@ -1,29 +1,48 @@
+#include <errno.h>
+#include <fcntl.h>
+#include <pwd.h>
+#include <readline/readline.h>
+#include <setjmp.h>
+#include <signal.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <readline/readline.h>
-#include <unistd.h>
 #include <sys/types.h>
-#include <pwd.h>
 #include <sys/wait.h>
-#include <stdint.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <signal.h>
-#include <setjmp.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
-#include "string.c"
 #include "config.h"
+#include "cstr.c"
+#include "string.c"
 
+// Save a few bytes by storing some state information
+// bitwise in a uint8_t
 #define FILE_TO_STDIN  0b10000000
 #define STDOUT_TO_FILE 0b01000000
 #define EXEC_BG        0b00000001
 
 enum InputMode {INTERACTIVE, PIPE, FILE_IN};
+// A few global variables are needed
 int bg_enabled = 0;
 int blocked_by_readline = 1;
 sigjmp_buf ctrlc_buf;
+
+// FIXME: write this function
+char* strReplace(char* string, char* find, char* replace)
+{
+  char* where;
+  size_t len;
+  //char* result = malloc((strlen(string)) * sizeof(char))
+
+  while (not_done)
+  {
+    where = strstr(string, find);
+    len = where - string;
+    result = cstrcat(
+  }
+}
 
 // Splits line at whitespace characters, putting them into the Strs* arr data structure
 void parseCLine(char* line, Strs* arr)
