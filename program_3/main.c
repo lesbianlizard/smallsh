@@ -145,7 +145,7 @@ int main(int argc, char** argv)
 
     for (i = 0; i < cline->used; i++)
     {
-      printf("user provided argument: '%s' of length %i\n", cline->d[i], strlen(cline->d[i]));
+      //printf("user provided argument: '%s' of length %i\n", cline->d[i], strlen(cline->d[i]));
     }
     
 
@@ -187,7 +187,7 @@ int main(int argc, char** argv)
         if ((containsStrs(cline, ">") > -1) && (containsStrs(cline, ">") < cline->used - 1))
         {
           special_funcs |= STDOUT_TO_FILE;
-          fd_stdout = open(cline->d[containsStrs(cline, ">")], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+          fd_stdout = open(cline->d[containsStrs(cline, ">") + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
         }
 
         // Redirect I/O to /dev/null if running in background
@@ -216,7 +216,7 @@ int main(int argc, char** argv)
             printf("fork error, halp!\n");
             break;
           case 0: // we are the child
-            printf("I am the child trying to execute your command '%s'\n", cline->d[0]);
+            //printf("I am the child trying to execute your command '%s'\n", cline->d[0]);
             if (fd_stdout > -1)
             {
               dup2(fd_stdout, 1);
@@ -228,17 +228,27 @@ int main(int argc, char** argv)
             }
 
             execvp(cline->d[0], cline->d);
-            printf("I am the child, and I just failed to execute your command\n");
+            //printf("I am the child, and I just failed to execute your command\n");
             exit(0);
             break;
           default: // we are the parent
-            printf("I am the parent waiting for my child %i to exit\n", spawnpid);
+            //printf("I am the parent waiting for my child %i to exit\n", spawnpid);
             waitpid(spawnpid, &waitpid_status, 0);
-            printf("I am the parent, and my child %i just exited\n", spawnpid);
+            //printf("I am the parent, and my child %i just exited\n", spawnpid);
 
             if (WIFSIGNALED(waitpid_status))
             {
               printf("terminated by signal %i\n", WTERMSIG(waitpid_status));
+            }
+
+            if (fd_stdin > -1)
+            {
+              close(fd_stdin);
+            }
+
+            if (fd_stdout > -1)
+            {
+              close(fd_stdout);
             }
 
             break;
