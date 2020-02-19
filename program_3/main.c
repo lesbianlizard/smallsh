@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <setjmp.h>
+#include <locale.h>
 
 #include "string.c"
 #include "config.h"
@@ -71,20 +72,10 @@ void parseCLine(char* line, Strs* arr)
   }
 }
 
-void printExecError(int exec_code, char* argv0)
+// FIXME: take third argument to replace "error" with custom localized string
+void printError(char* prog_name, char* error)
 {
-  char* error_str;
-  if (exec_code == EACCES)
-  {
-    // FIXME: this if statement doesn't work
-    error_str = "no such file or directory";
-  }
-  else
-  {
-   error_str = "unhandled exec() error";
-  }
-
-  printf("%s: error: %s\n", argv0, error_str);
+  printf("%s: error: %s\n", prog_name, error);
 }
 
 void catchSIGINT(int signo)
@@ -139,7 +130,8 @@ int main(int argc, char** argv)
   char *line = NULL,
        *wd,
        *prompt, 
-       *hostname;
+       *hostname,
+       *locale_str;
   struct passwd *pw;
   enum InputMode input_mode;
   uid_t uid;
@@ -148,6 +140,7 @@ int main(int argc, char** argv)
   struct sigaction ignore_action = {0},
                    SIGINT_action = {0},
                    SIGTSTP_action = {0};
+  locale_t locale;
 
 
   ignore_action.sa_handler = SIG_IGN;
@@ -163,6 +156,7 @@ int main(int argc, char** argv)
 
   sigaction(SIGINT, &SIGINT_action, NULL);
   sigaction(SIGTSTP, &SIGTSTP_action, NULL);
+
 
   // Check whether stdin is interactive
   if (isatty(fileno(stdin)))
@@ -187,6 +181,10 @@ int main(int argc, char** argv)
     // magic value for "these were never modified"
     fd_stdin = -2;
     fd_stdout = -2;
+    
+    // FIXME: this leaks
+    locale_str = setlocale(LC_ALL, "");
+    locale = newlocale(LC_ALL_MASK, locale_str, 0);
     
     // Get hostname of computer
     gethostname(hostname, 255);
@@ -300,11 +298,16 @@ int main(int argc, char** argv)
       {
         if (cline->used == 1)
         {
-          chdir(getenv("HOME"));
+          j = chdir(getenv("HOME"));
         }
         else
         {
-          chdir(cline->d[1]);
+          j = chdir(cline->d[1]);
+        }
+
+        if (! (j == 0))
+        {
+          printError(argv[0], strerror_l(errno, locale));
         }
       }
       // builtin "status"
@@ -312,6 +315,7 @@ int main(int argc, char** argv)
       {
         exitStatus(&waitpid_status);
       }
+      // FIXME: add builtin "export"
       // Run user-specified commands
       else
       {
@@ -322,11 +326,23 @@ int main(int argc, char** argv)
           fd_stdin = open(cline->d[containsStrs(cline, "<") + 1], O_RDONLY);
         }
 
+        // FIXME: print filename
+        if (fd_stdin == -1)
+        {
+          printError(argv[0], strerror_l(errno, locale));
+        }
+          
         // Redirect stdout to file
         if ((containsStrs(cline, ">") < cline->used - 1))
         {
           special_funcs |= STDOUT_TO_FILE;
           fd_stdout = open(cline->d[containsStrs(cline, ">") + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        }
+
+        // FIXME: print filename
+        if (fd_stdout == -1)
+        {
+          printError(argv[0], strerror_l(errno, locale));
         }
 
         // Redirect I/O to /dev/null if running in background
@@ -383,8 +399,6 @@ int main(int argc, char** argv)
             }
             else if (special_funcs & STDOUT_TO_FILE)
             {
-              // FIXME: print actual filename
-              printf("cannot open file for writing\n");
               exit(1);
             }
 
@@ -395,8 +409,6 @@ int main(int argc, char** argv)
             }
             else if (special_funcs & FILE_TO_STDIN)
             {
-              // FIXME: print actual filename
-              printf("cannot open file for input\n");
               exit(1);
             }
 
@@ -412,7 +424,7 @@ int main(int argc, char** argv)
             // Attempt to execute user's command
             i = execvp(cline->d[0], cline->d);
             // If command failed to execute, display error message and exit.
-            printExecError(i, argv[0]);
+            printError(argv[0], strerror_l(errno, locale));
             exit(1);
             break;
           // we are the parent
@@ -459,6 +471,7 @@ int main(int argc, char** argv)
     free(wd);
     free(prompt);
     free(hostname);
+    free(locale_str);
 
     // readline reallocates its memory every time, so free it every time
     if (input_mode == INTERACTIVE)
