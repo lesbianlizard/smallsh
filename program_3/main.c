@@ -131,6 +131,7 @@ int main(int argc, char** argv)
       j,
       waitpid_status = 0,
       waitpid_status_bg = 0,
+      // FIXME: This needs to be an array of pids
       pid_bg = -10,
       bg_enabled_prev = 0;
   uint8_t special_funcs;
