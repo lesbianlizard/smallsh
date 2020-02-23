@@ -29,29 +29,52 @@ int bg_enabled = 0;
 int blocked_by_readline = 1;
 sigjmp_buf ctrlc_buf;
 
-// FIXME: write this function
-char* strReplace(char* string, char* find, char* replace)
+/*
+
+int strReplace2(char* string, char* find, char* replace, char** dest) {
+
+  char *where;
+  char *
+
+  do {
+    where=
+
+  } while()
+
+}
+
+*/
+
+// FIXME: fix this function
+int strReplace(char* string, char* find, char* replace, char** dest)
 {
-  char* where,
-        *result = NULL,
-        *string_orig = string;
-  size_t len=0,
+  char *where,
+       *result = NULL,
+       *string_orig = string;
+  size_t len = 0,
          len_from_orig,
+         find_len = strlen(find),
          replace_len = strlen(replace),
-         string_len = strlen(string);
+         string_len = strlen(string),
+         len_prev = 0;
+  int found = 0;
   //char* result = malloc((strlen(string)) * sizeof(char))
   printf("in string '%s', replacing '%s' with '%s'\n", string, find, replace);
+  printf("string is size %i\n", string_len);
 
   where = strstr(string, find);
-  
+
   while (! (where == NULL))
   {
+    found = 1;
     len_from_orig = where - string;
+    len_prev = len;
     len += len_from_orig + replace_len;
     result = realloc(result, (len + 1) * sizeof(char));
-    strncat(result, where, len_from_orig);
+    memset(result + len_prev, 0, len - len_prev);
+    strncat(result, string, len_from_orig);
     strncat(result, replace, replace_len);
-    string = where + string_len;
+    string = where + find_len;
 
     if (string > (string_orig + string_len))
     {
@@ -60,18 +83,33 @@ char* strReplace(char* string, char* find, char* replace)
     else
     {
       where = strstr(string, find);
+      strncat(result, string, where - string);
     }
   }
+  // $$$$$$$$asdfjkhk4$$44$44$$$$
+  // $$asdf$$asdf$$
+
 
   printf("result of replacement: '%s'\n", result);
-  return result;
+  printf("result is size %i\n", strlen(result));
+
+  if (found == 0)
+  {
+    dest[0] = string;
+    return 1;
+  }
+  else
+  {
+    dest[0] = result;
+    return 0;
+  }
 }
 
 // Splits line at whitespace characters, putting them into the Strs* arr data structure
 void parseCLine(char* line, Strs* arr)
 {
   char* whitespace = " \t\n";
-  char* temp;
+  char** temp = malloc(sizeof(char*));
   // FIXME: size?
   char pid[10];
   size_t arglen;
@@ -81,10 +119,15 @@ void parseCLine(char* line, Strs* arr)
     return;
   }
 
-  sprintf(pid, "%i", getpid()); 
-  temp = strReplace(line, "$$", pid);
-  free(line);
-  line = temp;
+  sprintf(pid, "%i", getpid());
+  if (strReplace(line, "$$", pid, temp) == 0)
+  {
+    free(line);
+    line = *temp;
+    free(temp);
+  }
+
+  printf("result of replacement in parseCLine: '%s'\n", line);
 
 
 
@@ -113,10 +156,10 @@ void parseCLine(char* line, Strs* arr)
     }
 
     // Read arglen characters into a new string
-    temp = malloc((arglen + 1) * sizeof(char));
-    memset(temp, 0, (arglen + 1) * sizeof(char));
-    strncpy(temp, line, arglen);
-    pushStrs(arr, temp);
+    *temp = malloc((arglen + 1) * sizeof(char));
+    memset(*temp, 0, (arglen + 1) * sizeof(char));
+    strncpy(*temp, line, arglen);
+    pushStrs(arr, *temp);
     // Skip to next whitespace
     line = strpbrk(line, whitespace);
   }
@@ -189,7 +232,7 @@ int main(int argc, char** argv)
          getline_len = 0;
   char *line = NULL,
        *wd,
-       *prompt, 
+       *prompt,
        *hostname;
   struct passwd *pw;
   enum InputMode input_mode;
@@ -238,7 +281,7 @@ int main(int argc, char** argv)
     // magic value for "these were never modified"
     fd_stdin = -2;
     fd_stdout = -2;
-    
+
     // Get hostname of computer
     gethostname(hostname, 255);
     uid = geteuid();
@@ -261,7 +304,7 @@ int main(int argc, char** argv)
 
     // Check if children have exited
     j = waitpid(pid_bg, &waitpid_status_bg, WNOHANG);
-    
+
     if (j == pid_bg)
     {
       if (WIFSIGNALED(waitpid_status_bg))
@@ -413,7 +456,7 @@ int main(int argc, char** argv)
         {
           truncateStrs(cline, containsStrs(cline, "&"));
         }
-  
+
         // add null string to end of args list, which execvp() uses as a terminator
         // FIXME: Put I/O redirection filenames beyond this terminator so that child knows the filenames
         pushStrs(cline, NULL);
