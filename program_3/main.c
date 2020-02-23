@@ -32,16 +32,39 @@ sigjmp_buf ctrlc_buf;
 // FIXME: write this function
 char* strReplace(char* string, char* find, char* replace)
 {
-  char* where;
-  size_t len;
+  char* where,
+        *result = NULL,
+        *string_orig = string;
+  size_t len=0,
+         len_from_orig,
+         replace_len = strlen(replace),
+         string_len = strlen(string);
   //char* result = malloc((strlen(string)) * sizeof(char))
+  printf("in string '%s', replacing '%s' with '%s'\n", string, find, replace);
 
-  while (not_done)
+  where = strstr(string, find);
+  
+  while (! (where == NULL))
   {
-    where = strstr(string, find);
-    len = where - string;
-    result = cstrcat(
+    len_from_orig = where - string;
+    len += len_from_orig + replace_len;
+    result = realloc(result, (len + 1) * sizeof(char));
+    strncat(result, where, len_from_orig);
+    strncat(result, replace, replace_len);
+    string = where + string_len;
+
+    if (string > (string_orig + string_len))
+    {
+      where = NULL;
+    }
+    else
+    {
+      where = strstr(string, find);
+    }
   }
+
+  printf("result of replacement: '%s'\n", result);
+  return result;
 }
 
 // Splits line at whitespace characters, putting them into the Strs* arr data structure
@@ -49,12 +72,21 @@ void parseCLine(char* line, Strs* arr)
 {
   char* whitespace = " \t\n";
   char* temp;
+  // FIXME: size?
+  char pid[10];
   size_t arglen;
 
   if (strlen(line) == 0)
   {
     return;
   }
+
+  sprintf(pid, "%i", getpid()); 
+  temp = strReplace(line, "$$", pid);
+  free(line);
+  line = temp;
+
+
 
   while(! ((line == NULL)))
   {
@@ -482,7 +514,7 @@ int main(int argc, char** argv)
     // readline reallocates its memory every time, so free it every time
     if (input_mode == INTERACTIVE)
     {
-      free(line);
+//      free(line);
     }
   }
 
