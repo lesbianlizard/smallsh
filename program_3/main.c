@@ -29,21 +29,42 @@ int bg_enabled = 0;
 int blocked_by_readline = 1;
 sigjmp_buf ctrlc_buf;
 
-/*
 
-int strReplace2(char* string, char* find, char* replace, char** dest) {
 
-  char *where;
-  char *
+// Replaces all instances of `find` in `string` with `replace`, modifying
+// `string` in place. Returns the number of replacements made.
+int strReplace2(char* string, const char* find, const char* replace) {
 
-  do {
-    where=
+	char *where = strstr(string, find);
 
-  } while()
+	if (where == NULL)
+		return 0;
 
+	int before_part_len = where - string;
+	int replace_part_len = strlen(replace);
+	int replaced_part_len = strlen(find);
+	//int lookahead = strstr(string + before_part_len + replace_part_len, find) - string;
+
+	string = realloc(string, (strlen(string)+1 + replace_part_len - replaced_part_len) * sizeof(char));
+
+	memmove(string + before_part_len + replace_part_len,\
+				  string + before_part_len + replaced_part_len,\
+					(strlen(string)+1) - before_part_len + replaced_part_len);
+
+	memcpy(string + before_part_len, replace, replace_part_len);
+
+	return strReplace2(string, find, replace) + 1;
 }
 
-*/
+char* strReplace3(const char* string, const char* find, const char* replace) {
+	char* newstr = malloc((strlen(string)+1) * sizeof(char));
+	strcpy(newstr, string);
+	int a = strReplace2(newstr, find, replace);
+	printf("replaced %i entities\n", a);
+	return newstr;
+}
+
+
 
 // FIXME: fix this function
 int strReplace(char* string, char* find, char* replace, char** dest)
@@ -220,6 +241,11 @@ void exitStatus(int* waitpid_status)
 
 int main(int argc, char** argv)
 {
+	char* repl;
+	repl = strReplace3(argv[1], "$$", argv[2]);
+	printf("%s\n", repl);
+	exit(1);
+
   int fd_stdin,
       fd_stdout,
       j,
