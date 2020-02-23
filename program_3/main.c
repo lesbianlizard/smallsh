@@ -59,8 +59,8 @@ int strReplace(char* string, char* find, char* replace, char** dest)
          len_prev = 0;
   int found = 0;
   //char* result = malloc((strlen(string)) * sizeof(char))
-  printf("in string '%s', replacing '%s' with '%s'\n", string, find, replace);
-  printf("string is size %i\n", string_len);
+  //printf("in string '%s', replacing '%s' with '%s'\n", string, find, replace);
+  //printf("string is size %i\n", string_len);
 
   where = strstr(string, find);
 
@@ -93,22 +93,23 @@ int strReplace(char* string, char* find, char* replace, char** dest)
 
   if (found == 0)
   {
-    printf("Didn't replace anything\n");
+    //printf("Didn't replace anything\n");
     dest[0] = string;
     return 1;
   }
   else
   {
-    printf("result of replacement: '%s'\n", result);
-    printf("result is size %i\n", strlen(result));
+    //printf("result of replacement: '%s'\n", result);
+    //printf("result is size %i\n", strlen(result));
     dest[0] = result;
     return 0;
   }
 }
 
 // Splits line at whitespace characters, putting them into the Strs* arr data structure
-void parseCLine(char* line, Strs* arr)
+void parseCLine(char** line_in, Strs* arr, enum InputMode input_mode)
 {
+  char* line = *line_in;
   char* whitespace = " \t\n";
   char** temp = malloc(sizeof(char*));
   char* temp2;
@@ -127,10 +128,10 @@ void parseCLine(char* line, Strs* arr)
     free(line);
     //line = temp[0];
     line = *temp;
-    //free(temp);
+    free(temp);
   }
 
-  printf("result of replacement in parseCLine: '%s'\n", line);
+  //printf("result of replacement in parseCLine: '%s'\n", line);
 
 
 
@@ -166,6 +167,8 @@ void parseCLine(char* line, Strs* arr)
     // Skip to next whitespace
     line = strpbrk(line, whitespace);
   }
+
+  *line_in = line;
 }
 
 void printExecError(int exec_code, char* argv0)
@@ -370,7 +373,7 @@ int main(int argc, char** argv)
     }
 
     // Parse input line into strings by whitespace
-    parseCLine(line, cline);
+    parseCLine(&line, cline, input_mode);
 
     // Ignore comments
     for (i = 0; i < cline->used; i++)
@@ -560,7 +563,7 @@ int main(int argc, char** argv)
     // readline reallocates its memory every time, so free it every time
     if (input_mode == INTERACTIVE)
     {
-//      free(line);
+      free(line);
     }
   }
 
