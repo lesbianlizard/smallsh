@@ -83,23 +83,24 @@ int strReplace(char* string, char* find, char* replace, char** dest)
     else
     {
       where = strstr(string, find);
-      strncat(result, string, where - string);
+      //strncat(result, string, where - string);
     }
   }
   // $$$$$$$$asdfjkhk4$$44$44$$$$
   // $$asdf$$asdf$$
 
 
-  printf("result of replacement: '%s'\n", result);
-  printf("result is size %i\n", strlen(result));
 
   if (found == 0)
   {
+    printf("Didn't replace anything\n");
     dest[0] = string;
     return 1;
   }
   else
   {
+    printf("result of replacement: '%s'\n", result);
+    printf("result is size %i\n", strlen(result));
     dest[0] = result;
     return 0;
   }
@@ -110,6 +111,7 @@ void parseCLine(char* line, Strs* arr)
 {
   char* whitespace = " \t\n";
   char** temp = malloc(sizeof(char*));
+  char* temp2;
   // FIXME: size?
   char pid[10];
   size_t arglen;
@@ -123,8 +125,9 @@ void parseCLine(char* line, Strs* arr)
   if (strReplace(line, "$$", pid, temp) == 0)
   {
     free(line);
+    //line = temp[0];
     line = *temp;
-    free(temp);
+    //free(temp);
   }
 
   printf("result of replacement in parseCLine: '%s'\n", line);
@@ -156,10 +159,10 @@ void parseCLine(char* line, Strs* arr)
     }
 
     // Read arglen characters into a new string
-    *temp = malloc((arglen + 1) * sizeof(char));
-    memset(*temp, 0, (arglen + 1) * sizeof(char));
-    strncpy(*temp, line, arglen);
-    pushStrs(arr, *temp);
+    temp2 = malloc((arglen + 1) * sizeof(char));
+    memset(temp2, 0, (arglen + 1) * sizeof(char));
+    strncpy(temp2, line, arglen);
+    pushStrs(arr, temp2);
     // Skip to next whitespace
     line = strpbrk(line, whitespace);
   }
