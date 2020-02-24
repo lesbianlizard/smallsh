@@ -202,7 +202,7 @@ void catchSIGTSTP(int signo)
   }
 }
 
-void printBGProcessStatus(Pidts* pids_bg)
+size_t printBGProcessStatus(Pidts* pids_bg)
 {
     size_t n_pids = pids_bg->used,
            i;
@@ -233,6 +233,8 @@ void printBGProcessStatus(Pidts* pids_bg)
         printf("Unexpected waitpid error: %s\n", strerror(errno));
       }
     }
+
+    return pids_bg->used;
 }
 
 void exitStatus(int* waitpid_status)
@@ -247,6 +249,27 @@ void exitStatus(int* waitpid_status)
   }
 }
 
+void killBGProcesses(Pidts* pids)
+{
+  size_t i;
+
+  for (i = 0; i < pids->used; i++)
+  {
+    if (! (kill(pids->d[i], SIGTERM) == 0))
+    {
+      printf("unexpected kill error: %s\n", strerror(errno));
+    }
+  }
+}
+
+void exitShell(Pidts* pids)
+{
+  killBGProcesses(pids);
+  while (! (printBGProcessStatus(pids) == 0)) {}
+  // FIXME: return exit code of previous process
+  exit(0);
+}
+
 int main(int argc, char** argv)
 {
   int fd_stdin,
@@ -256,7 +279,6 @@ int main(int argc, char** argv)
       bg_enabled_prev = 0;
   uint8_t special_funcs;
   size_t i,
-         k,
          getline_len = 0;
   char *line[1] = {NULL},
        *wd,
@@ -265,8 +287,7 @@ int main(int argc, char** argv)
   struct passwd *pw;
   enum InputMode input_mode;
   uid_t uid;
-  pid_t spawnpid,
-        l;
+  pid_t spawnpid;
   Strs* cline;
   Pidts pids_bg[1];
   struct sigaction ignore_action = {0},
@@ -304,7 +325,6 @@ int main(int argc, char** argv)
     cline = malloc(sizeof(Strs));
     initStrs(cline);
     wd = getcwd(NULL, 0);
-    // FIXME: random sizes...
     hostname = malloc(HOSTNAME_SIZE * sizeof(char));
     special_funcs = 0;
     // magic value for "these were never modified"
@@ -320,7 +340,6 @@ int main(int argc, char** argv)
     prompt = malloc(i * sizeof(char));
     memset(prompt, 0, i * sizeof(char));
 
-    // FIXME: dynamically calculate prompt's length
     // build shell prompt
     strcat(prompt, pw->pw_name);
     strcat(prompt, "@");
@@ -373,17 +392,14 @@ int main(int argc, char** argv)
 
       if (getline(line, &getline_len, stdin) == -1)
       {
-        exit(0);
-        // FIXME: exit properly
+        exitShell(pids_bg);
       }
     }
 
 
     if (*line == NULL)
     {
-      exit(0); // FIXME: deallocate memory and stuff before exiting
-      // FIXME: children should die with me, but for some reason they don't
-        // FIXME: exit properly
+      exitShell(pids_bg);
     }
 
     // Parse input line into strings by whitespace
@@ -406,8 +422,7 @@ int main(int argc, char** argv)
       if (strcmp(cline->d[0], "exit") == 0)
       {
         printf("Exiting smallsh.\n");
-        exit(0);
-        // FIXME: exit properly
+        exitShell(pids_bg);
       }
       // builtin "cd"
       else if (strcmp(cline->d[0], "cd") == 0)
@@ -445,7 +460,7 @@ int main(int argc, char** argv)
 
         // Redirect I/O to /dev/null if running in background
         // and the user didn't alreay specify I/O redirection
-        if ((containsStrs(cline, "&") == cline->used - 1) && (bg_enabled == 0))
+        if ((containsStrs(cline, "&") == cline->used - 1) && (cline->used > 1) && (bg_enabled == 0))
         {
           special_funcs |= EXEC_BG;
 
@@ -472,7 +487,7 @@ int main(int argc, char** argv)
           truncateStrs(cline, containsStrs(cline, ">"));
         }
 
-        if (containsStrs(cline, "&") == cline->used - 1)
+        if ((containsStrs(cline, "&") == cline->used - 1) && (cline->used > 1))
         {
           truncateStrs(cline, containsStrs(cline, "&"));
         }
@@ -535,6 +550,7 @@ int main(int argc, char** argv)
             if (special_funcs & EXEC_BG)
             {
               waitpid(spawnpid, &waitpid_status_bg, WNOHANG);
+              // FIXME: check whether fork actually worked before putting pids in array
               pushPidts(pids_bg, spawnpid);
               printf("background pid is %i\n", spawnpid);
             }
