@@ -130,9 +130,11 @@ void parseCLine(char** line_in, Strs* arr, enum InputMode input_mode)
     //line = temp[0];
     line = *temp;
   }
-    //free(temp);
+  // FIXME: Why does this free not work?
+  //free(temp);
 
   //printf("result of replacement in parseCLine: '%s'\n", line);
+  *line_in = line;
 
 
 
@@ -169,7 +171,6 @@ void parseCLine(char** line_in, Strs* arr, enum InputMode input_mode)
     line = strpbrk(line, whitespace);
   }
 
-  *line_in = line;
 }
 
 void printExecError(int exec_code, char* argv0)
@@ -237,7 +238,7 @@ int main(int argc, char** argv)
   uint8_t special_funcs;
   size_t i,
          getline_len = 0;
-  char *line = NULL,
+  char *line[1] = {NULL},
        *wd,
        *prompt,
        *hostname;
@@ -274,6 +275,7 @@ int main(int argc, char** argv)
   {
     input_mode = PIPE;
   }
+    input_mode = PIPE;
 
   while (1)
   {
@@ -346,7 +348,7 @@ int main(int argc, char** argv)
     if (input_mode == INTERACTIVE)
     {
       blocked_by_readline = 0;
-      line = readline(prompt);
+      *line = readline(prompt);
       blocked_by_readline = 1;
     }
     else if (input_mode == PIPE)
@@ -358,7 +360,7 @@ int main(int argc, char** argv)
       fflush(stdout);
       #endif
 
-      if (getline(&line, &getline_len, stdin) == -1)
+      if (getline(line, &getline_len, stdin) == -1)
       {
         exit(0);
         // FIXME: exit properly
@@ -366,7 +368,7 @@ int main(int argc, char** argv)
     }
 
 
-    if (line == NULL)
+    if (*line == NULL)
     {
       exit(0); // FIXME: deallocate memory and stuff before exiting
       // FIXME: children should die with me, but for some reason they don't
@@ -374,7 +376,7 @@ int main(int argc, char** argv)
     }
 
     // Parse input line into strings by whitespace
-    parseCLine(&line, cline, input_mode);
+    parseCLine(line, cline, input_mode);
 
     // Ignore comments
     for (i = 0; i < cline->used; i++)
@@ -562,15 +564,17 @@ int main(int argc, char** argv)
     free(hostname);
 
     // readline reallocates its memory every time, so free it every time
-    if (input_mode == INTERACTIVE)
+    //if (input_mode == INTERACTIVE)
+    if (1)
     {
-      free(line);
+      free(*line);
+      *line = NULL;
     }
   }
 
   // getline reuses the same memory over and over, so only free it upon exit
-  if(input_mode == PIPE)
-  {
-    free(line);
-  }
+//  if(input_mode == PIPE)
+//  {
+//    free(*line);
+//  }
 }
