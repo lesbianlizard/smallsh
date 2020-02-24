@@ -208,6 +208,7 @@ int main(int argc, char** argv)
       j,
       waitpid_status = 0,
       waitpid_status_bg = 0,
+      // FIXME: This needs to be an array of pids
       pid_bg = -10,
       bg_enabled_prev = 0;
   uint8_t special_funcs;
@@ -260,17 +261,18 @@ int main(int argc, char** argv)
     // FIXME: random sizes...
     prompt = malloc(100 * sizeof(char));
     memset(prompt, 0, 100 * sizeof(char));
-    hostname = malloc(255 * sizeof(char));
+    hostname = malloc(HOSTNAME_SIZE * sizeof(char));
     special_funcs = 0;
     // magic value for "these were never modified"
     fd_stdin = -2;
     fd_stdout = -2;
 
     // Get hostname of computer
-    gethostname(hostname, 255);
+    gethostname(hostname, HOSTNAME_SIZE);
     uid = geteuid();
     pw = getpwuid(uid);
 
+    // FIXME: dynamically calculate prompt's length
     // build shell prompt
     strcat(prompt, pw->pw_name);
     strcat(prompt, "@");

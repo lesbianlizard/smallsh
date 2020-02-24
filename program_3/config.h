@@ -1,1 +1,2 @@
 #define APPEASE_GRADER
+#define HOSTNAME_SIZE 255
