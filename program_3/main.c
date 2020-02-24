@@ -46,6 +46,7 @@ enum InputMode {INTERACTIVE, PIPE, FILE_IN};
 // A few global variables are needed
 int bg_enabled = 0;
 int blocked_by_readline = 1;
+int exit_now = 1;
 sigjmp_buf ctrlc_buf;
 
 
@@ -260,10 +261,21 @@ void killBGProcesses(Pidts* pids)
 
 void exitShell(Pidts* pids)
 {
+  printf("Exiting smallsh.\n");
+  // send signal to all background processes
   killBGProcesses(pids);
+  // Wait for background processes to exit
   while (! (printBGProcessStatus(pids) == 0)) {}
-  // FIXME: return exit code of previous process
+  deallocPidts(pids);
+  // FIXME: return exit code of last foreground process
   exit(0);
+}
+
+// Set the global exit flag, causing the shell to exit cleanly
+// Possibly will actually do something in future?
+void setExitFlag()
+{
+  exit_now = 0;
 }
 
 int main(int argc, char** argv)
@@ -394,20 +406,26 @@ int main(int argc, char** argv)
       fflush(stdout);
       #endif
 
+      // If getline returns -1 dues to EOF, exit
       if (getline(line, &getline_len, stdin) == -1)
       {
-        exitShell(pids_bg);
+        free(*line);
+        *line = NULL;
+        setExitFlag();
       }
     }
 
-
+    // If readline returns NULL due to EOF, exit
     if (*line == NULL)
     {
-      exitShell(pids_bg);
+      setExitFlag();
+    }
+    else
+    {
+      // Parse input line into strings by whitespace
+      parseCLine(line, cline);
     }
 
-    // Parse input line into strings by whitespace
-    parseCLine(line, cline);
 
     // Ignore comments
     for (i = 0; i < cline->used; i++)
@@ -425,8 +443,7 @@ int main(int argc, char** argv)
       // builtin "exit"
       if (strcmp(cline->d[0], "exit") == 0)
       {
-        printf("Exiting smallsh.\n");
-        exitShell(pids_bg);
+        setExitFlag();
       }
       // builtin "cd"
       else if (strcmp(cline->d[0], "cd") == 0)
@@ -610,5 +627,10 @@ int main(int argc, char** argv)
     free(*line);
     *line = NULL;
     freelocale(locale);
+
+    if (exit_now == 0)
+    {
+      exitShell(pids_bg);
+    }
   }
 }
