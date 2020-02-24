@@ -25,9 +25,9 @@ void CONCAT(init, NAME)(NAME* new_arr)
 // Free all memory allocated in a NAME
 void CONCAT(dealloc, NAME)(NAME* arr)
 {
+  #ifdef C_STRING_MODE
   size_t i;
 
-  #ifdef C_STRING_MODE
   for (i = 0; i < arr->used; i++)
   {
     free(arr->d[i]);
@@ -83,9 +83,9 @@ size_t CONCAT(contains, NAME)(NAME* arr, DTYPE search)
 // Remove all elements of a NAME array at an index greater than or equal to idx
 void CONCAT(truncate, NAME)(NAME* arr, size_t idx)
 {
+  #ifdef C_STRING_MODE
   size_t i;
 
-  #ifdef C_STRING_MODE
   for (i = idx; i < arr->used; i++)
   {
     free(arr->d[i]);
