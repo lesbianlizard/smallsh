@@ -111,7 +111,8 @@ void parseCLine(char** line_in, Strs* arr, enum InputMode input_mode)
 {
   char* line = *line_in;
   char* whitespace = " \t\n";
-  char** temp = malloc(sizeof(char*));
+  //char** temp = malloc(sizeof(char*));
+  char* temp[1];
   char* temp2;
   // FIXME: size?
   char pid[10];
@@ -128,8 +129,8 @@ void parseCLine(char** line_in, Strs* arr, enum InputMode input_mode)
     free(line);
     //line = temp[0];
     line = *temp;
-    free(temp);
   }
+    //free(temp);
 
   //printf("result of replacement in parseCLine: '%s'\n", line);
 
