@@ -18,6 +18,14 @@
 
 #define NAME Strs
 #define DTYPE char*
+#define C_STRING_MODE
+#include "array.c"
+#undef NAME
+#undef DTYPE
+#undef C_STRING_MODE
+
+#define NAME Pidts
+#define DTYPE pid_t
 #include "array.c"
 #undef NAME
 #undef DTYPE
@@ -194,6 +202,39 @@ void catchSIGTSTP(int signo)
   }
 }
 
+void printBGProcessStatus(Pidts* pids_bg)
+{
+    size_t n_pids = pids_bg->used,
+           i;
+    int wp_status;
+    pid_t pid;
+
+
+    for(i = 0; i < n_pids; i++)
+    {
+      pid = waitpid(pids_bg->d[i], &wp_status, WNOHANG);
+
+      if (pid == pids_bg->d[i])
+      {
+        if (WIFSIGNALED(wp_status))
+        {
+          printf("background pid %i is done: terminated by signal %i\n", pid, WTERMSIG(wp_status));
+        }
+        else if (WIFEXITED(wp_status))
+        {
+          printf("background pid %i is done: exit value %i\n", pid, WEXITSTATUS(wp_status));
+        }
+
+        removeValsPidts(pids_bg, pid);
+        n_pids = pids_bg->used;
+      }
+      else if (pid == -1)
+      {
+        printf("Unexpected waitpid error: %s\n", strerror(errno));
+      }
+    }
+}
+
 void exitStatus(int* waitpid_status)
 {
   if (WIFSIGNALED(*waitpid_status))
@@ -210,14 +251,12 @@ int main(int argc, char** argv)
 {
   int fd_stdin,
       fd_stdout,
-      j,
       waitpid_status = 0,
       waitpid_status_bg = 0,
-      // FIXME: This needs to be an array of pids
-      pid_bg = -10,
       bg_enabled_prev = 0;
   uint8_t special_funcs;
   size_t i,
+         k,
          getline_len = 0;
   char *line[1] = {NULL},
        *wd,
@@ -226,12 +265,15 @@ int main(int argc, char** argv)
   struct passwd *pw;
   enum InputMode input_mode;
   uid_t uid;
-  pid_t spawnpid;
+  pid_t spawnpid,
+        l;
   Strs* cline;
+  Pidts pids_bg[1];
   struct sigaction ignore_action = {0},
                    SIGINT_action = {0},
                    SIGTSTP_action = {0};
 
+  initPidts(pids_bg);
 
   ignore_action.sa_handler = SIG_IGN;
   SIGINT_action.sa_handler =  catchSIGINT;
@@ -295,21 +337,7 @@ int main(int argc, char** argv)
     }
 
     // Check if children have exited
-    j = waitpid(pid_bg, &waitpid_status_bg, WNOHANG);
-
-    if (j == pid_bg)
-    {
-      if (WIFSIGNALED(waitpid_status_bg))
-      {
-        printf("background pid %i is done: terminated by signal %i\n", pid_bg, WTERMSIG(waitpid_status_bg));
-      }
-      else if (WIFEXITED(waitpid_status_bg))
-      {
-        printf("background pid %i is done: exit value %i\n", pid_bg, WEXITSTATUS(waitpid_status_bg));
-      }
-
-      pid_bg = -10;
-    }
+    printBGProcessStatus(pids_bg);
 
     // Check whether background mode has been toggled
     if (! (bg_enabled == bg_enabled_prev))
@@ -507,8 +535,8 @@ int main(int argc, char** argv)
             if (special_funcs & EXEC_BG)
             {
               waitpid(spawnpid, &waitpid_status_bg, WNOHANG);
-              pid_bg = spawnpid;
-              printf("background pid is %i\n", pid_bg);
+              pushPidts(pids_bg, spawnpid);
+              printf("background pid is %i\n", spawnpid);
             }
             else
             {
