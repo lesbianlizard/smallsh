@@ -169,10 +169,10 @@ void parseCLine(char** line_in, Strs* arr)
 }
 
 // FIXME: take third argument to replace "error" with custom localized string
-void printError(char* prog_name, char* error)
-{
-  printf("%s: error: %s\n", prog_name, error);
-}
+//void printError(char* prog_name, char* error)
+//{
+//  printf("%s: error: %s\n", prog_name, error);
+//}
 
 void catchSIGINT(int signo)
 {
@@ -215,11 +215,16 @@ size_t printBGProcessStatus(Pidts* pids_bg)
       {
         if (WIFSIGNALED(wp_status))
         {
-          printf("background pid %i is done: terminated by signal %i\n", pid, WTERMSIG(wp_status));
+          printf(_("background pid %1$i is done: terminated by signal %2$i (%3$s)\n"),
+            pid,
+            WTERMSIG(wp_status),
+            strsignal(WTERMSIG(wp_status)));
         }
         else if (WIFEXITED(wp_status))
         {
-          printf("background pid %i is done: exit value %i\n", pid, WEXITSTATUS(wp_status));
+          printf(_("background pid %1$i is done: exit value %2$i\n"),
+            pid,
+            WEXITSTATUS(wp_status));
         }
 
         removeValsPidts(pids_bg, pid);
@@ -227,7 +232,9 @@ size_t printBGProcessStatus(Pidts* pids_bg)
       }
       else if (pid == -1)
       {
-        printf("Unexpected waitpid error: %s\n", strerror(errno));
+        printf(_("%1$s: waitpid error: %2$s\n"),
+            PROG_NAME,
+            STRERROR(errno, locale));
       }
     }
 
@@ -238,11 +245,13 @@ void exitStatus(int* waitpid_status)
 {
   if (WIFSIGNALED(*waitpid_status))
   {
-    printf("terminated by signal %i\n", WTERMSIG(*waitpid_status));
+    printf(_("terminated by signal %1$i (%2$s)\n"),
+      WTERMSIG(*waitpid_status),
+      strsignal(WTERMSIG(*waitpid_status)));
   }
   else
   {
-    printf("exited with status %i\n", WEXITSTATUS(*waitpid_status));
+    printf(_("exited with status %1$i\n"), WEXITSTATUS(*waitpid_status));
   }
 }
 
@@ -254,14 +263,17 @@ void killBGProcesses(Pidts* pids)
   {
     if (! (kill(pids->d[i], SIGTERM) == 0))
     {
-      printf("unexpected kill error: %s\n", strerror(errno));
+      printf(_("%1$s: cannot kill child pid %2$i: %3$s\n"),
+          PROG_NAME,
+          pids->d[i],
+          STRERROR(errno, locale));
     }
   }
 }
 
 void exitShell(Pidts* pids)
 {
-  printf("Exiting smallsh.\n");
+  //printf("Exiting smallsh.\n");
   // send signal to all background processes
   killBGProcesses(pids);
   // Wait for background processes to exit
@@ -381,11 +393,11 @@ int main(int argc, char** argv)
 
       if (bg_enabled == 0)
       {
-        printf("Leaving foreground-only mode \n");
+        printf(_("Leaving foreground-only mode\n"));
       }
       else
       {
-        printf("Entering foreground-only mode (& is now ignored)\n");
+        printf(_("Entering foreground-only mode (& is now ignored)\n"));
       }
     }
 
@@ -402,7 +414,7 @@ int main(int argc, char** argv)
       // Outputting prompts when not in interactive mode makes little sense, but
       // the " : " prompt is explicitly part of the assignment
       #ifdef APPEASE_GRADER
-      printf(" : ");
+       printf(" : ");
       fflush(stdout);
       #endif
 
@@ -457,9 +469,13 @@ int main(int argc, char** argv)
           j = chdir(cline->d[1]);
         }
 
+        // FIXME: store dir we tried to CD to in a var in case $HOME is messed up
         if (! (j == 0))
         {
-          printError(argv[0], strerror_l(errno, locale));
+          printf(_("%1$s: error: cannot change directory to '%2$s': %3$s\n"),
+            PROG_NAME,
+            cline->d[1],
+            STRERROR(errno, locale));
         }
       }
       // builtin "status"
@@ -481,7 +497,10 @@ int main(int argc, char** argv)
         // FIXME: print filename
         if (fd_stdin == -1)
         {
-          printError(argv[0], strerror_l(errno, locale));
+          printf(_("%1$s: error: cannot open '%2$s' for I/O redirection: %3$s\n"),
+            PROG_NAME,
+            cline->d[containsStrs(cline, "<") + 1],
+            STRERROR(errno, locale));
         }
           
         // Redirect stdout to file
@@ -494,7 +513,10 @@ int main(int argc, char** argv)
         // FIXME: print filename
         if (fd_stdout == -1)
         {
-          printError(argv[0], strerror_l(errno, locale));
+          printf(_("%1$s: error: cannot open '%2$s' for I/O redirection: %3$s\n"),
+            PROG_NAME,
+            cline->d[containsStrs(cline, ">") + 1],
+            STRERROR(errno, locale));
         }
 
         // Redirect I/O to /dev/null if running in background
@@ -540,7 +562,9 @@ int main(int argc, char** argv)
         switch (spawnpid)
         {
           case -1:
-            printf("Unable to fork, this should not happen\n");
+            printf(_("%1$s: fork failed: %2$s\n"),
+                PROG_NAME,
+                STRERROR(errno, locale));
             break;
           // we are the child
           case 0:
@@ -575,8 +599,22 @@ int main(int argc, char** argv)
 
             // Attempt to execute user's command
             i = execvp(cline->d[0], cline->d);
+            
             // If command failed to execute, display error message and exit.
-            printError(argv[0], strerror_l(errno, locale));
+            if (errno == ENOENT)
+            {
+              printf(_("%1$s: command not found: '%2$s'\n"),
+                  PROG_NAME,
+                  cline->d[0]);
+            }
+            else
+            {
+              printf(_("%1$s: cannot execute '%2$s': %3$s\n"),
+                  PROG_NAME,
+                  cline->d[0],
+                  STRERROR(errno, locale));
+            }
+
             exit(1);
             break;
           // we are the parent
@@ -587,7 +625,7 @@ int main(int argc, char** argv)
               waitpid(spawnpid, &waitpid_status_bg, WNOHANG);
               // FIXME: check whether fork actually worked before putting pids in array
               pushPidts(pids_bg, spawnpid);
-              printf("background pid is %i\n", spawnpid);
+              printf(_("background pid is %1$i\n"), spawnpid);
             }
             else
             {
@@ -598,7 +636,9 @@ int main(int argc, char** argv)
             if (WIFSIGNALED(waitpid_status))
             {
               // FIXME: can we detect whether someone just pressed ^C, and print an extra newline if so?
-              printf("terminated by signal %i\n", WTERMSIG(waitpid_status));
+              printf(_("terminated by signal %1$i (%2$s)\n"),
+                WTERMSIG(waitpid_status),
+                strsignal(WTERMSIG(waitpid_status)));
             }
 
             // Close files used for I/O redirection if they were opened
