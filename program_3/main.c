@@ -1,11 +1,14 @@
+#include <errno.h>
+#include <fcntl.h>
+#include <pwd.h>
+#include <readline/readline.h>
+#include <setjmp.h>
+#include <signal.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <readline/readline.h>
-#include <unistd.h>
 #include <sys/types.h>
-#include <pwd.h>
 #include <sys/wait.h>
 #include <stdint.h>
 #include <fcntl.h>
@@ -13,30 +16,121 @@
 #include <signal.h>
 #include <setjmp.h>
 #include <locale.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
-#include "string.c"
 #include "config.h"
+#include "cstr.c"
 
+#define NAME Strs
+#define DTYPE char*
+#define C_STRING_MODE
+#include "array.c"
+#undef NAME
+#undef DTYPE
+#undef C_STRING_MODE
+
+#define NAME Pidts
+#define DTYPE pid_t
+#include "array.c"
+#undef NAME
+#undef DTYPE
+
+// Save a few bytes by storing some state information
+// bitwise in a uint8_t
 #define FILE_TO_STDIN  0b10000000
 #define STDOUT_TO_FILE 0b01000000
 #define EXEC_BG        0b00000001
 
 enum InputMode {INTERACTIVE, PIPE, FILE_IN};
+// A few global variables are needed
 int bg_enabled = 0;
 int blocked_by_readline = 1;
 sigjmp_buf ctrlc_buf;
 
-// Splits line at whitespace characters, putting them into the Strs* arr data structure
-void parseCLine(char* line, Strs* arr)
+
+// This function replaces all instances of find with replace in string,
+// storing the result in a newly-allocated buffer *dest.
+int strReplace(char* string, char* find, char* replace, char** dest)
 {
-  char* whitespace = " \t\n";
-  char* temp;
+  char *where,
+       *result = NULL,
+       *string_orig = string;
+  size_t len = 0,
+         len_from_orig,
+         find_len = strlen(find),
+         replace_len = strlen(replace),
+         string_len = strlen(string),
+         len_prev = 0;
+  int found = 0;
+
+  // Set where to the first occurance of find in string, if it exists
+  where = strstr(string, find);
+
+  while (! (where == NULL))
+  {
+    found = 1;
+    len_from_orig = where - string;
+    len_prev = len;
+    len += len_from_orig + replace_len;
+    result = realloc(result, (len + 1) * sizeof(char));
+    memset(result + len_prev, 0, len - len_prev);
+    strncat(result, string, len_from_orig);
+    strncat(result, replace, replace_len);
+    string = where + find_len;
+
+    if (string > (string_orig + string_len))
+    {
+      where = NULL;
+    }
+    else
+    {
+      where = strstr(string, find);
+    }
+  }
+
+  if (found == 0)
+  {
+    dest[0] = string;
+    return 1;
+  }
+  else
+  {
+    dest[0] = result;
+    return 0;
+  }
+}
+
+// Splits line at whitespace characters, putting them into the Strs* arr data structure
+void parseCLine(char** line_in, Strs* arr)
+{
+  char *line = *line_in,
+       *whitespace = " \t\n",
+       *temp[1],
+       *temp2;
+  // FIXME: size?
+  char pid[10];
   size_t arglen;
 
+  // If the user entered nothing, do not attempt to parse
   if (strlen(line) == 0)
   {
     return;
   }
+
+  // Get PID of self
+  sprintf(pid, "%i", getpid());
+
+  // Attempt to replace $$ with pid in user's input
+  if (strReplace(line, "$$", pid, temp) == 0)
+  {
+    // If strReplace succeeded, free the memory of the original string,
+    // updating line_in so the rest of the program knows the new memory address
+    free(line);
+    line = *temp;
+    *line_in = line;
+  }
+
 
   while(! ((line == NULL)))
   {
@@ -63,13 +157,14 @@ void parseCLine(char* line, Strs* arr)
     }
 
     // Read arglen characters into a new string
-    temp = malloc((arglen + 1) * sizeof(char));
-    memset(temp, 0, (arglen + 1) * sizeof(char));
-    strncpy(temp, line, arglen);
-    pushStrs(arr, temp);
+    temp2 = malloc((arglen + 1) * sizeof(char));
+    memset(temp2, 0, (arglen + 1) * sizeof(char));
+    strncpy(temp2, line, arglen);
+    pushStrs(arr, temp2);
     // Skip to next whitespace
     line = strpbrk(line, whitespace);
   }
+
 }
 
 // FIXME: take third argument to replace "error" with custom localized string
@@ -103,6 +198,41 @@ void catchSIGTSTP(int signo)
   }
 }
 
+size_t printBGProcessStatus(Pidts* pids_bg)
+{
+    size_t n_pids = pids_bg->used,
+           i;
+    int wp_status;
+    pid_t pid;
+
+
+    for(i = 0; i < n_pids; i++)
+    {
+      pid = waitpid(pids_bg->d[i], &wp_status, WNOHANG);
+
+      if (pid == pids_bg->d[i])
+      {
+        if (WIFSIGNALED(wp_status))
+        {
+          printf("background pid %i is done: terminated by signal %i\n", pid, WTERMSIG(wp_status));
+        }
+        else if (WIFEXITED(wp_status))
+        {
+          printf("background pid %i is done: exit value %i\n", pid, WEXITSTATUS(wp_status));
+        }
+
+        removeValsPidts(pids_bg, pid);
+        n_pids = pids_bg->used;
+      }
+      else if (pid == -1)
+      {
+        printf("Unexpected waitpid error: %s\n", strerror(errno));
+      }
+    }
+
+    return pids_bg->used;
+}
+
 void exitStatus(int* waitpid_status)
 {
   if (WIFSIGNALED(*waitpid_status))
@@ -115,19 +245,39 @@ void exitStatus(int* waitpid_status)
   }
 }
 
+void killBGProcesses(Pidts* pids)
+{
+  size_t i;
+
+  for (i = 0; i < pids->used; i++)
+  {
+    if (! (kill(pids->d[i], SIGTERM) == 0))
+    {
+      printf("unexpected kill error: %s\n", strerror(errno));
+    }
+  }
+}
+
+void exitShell(Pidts* pids)
+{
+  killBGProcesses(pids);
+  while (! (printBGProcessStatus(pids) == 0)) {}
+  // FIXME: return exit code of previous process
+  exit(0);
+}
+
 int main(int argc, char** argv)
 {
   int fd_stdin,
       fd_stdout,
-      j,
       waitpid_status = 0,
       waitpid_status_bg = 0,
-      pid_bg = -10,
-      bg_enabled_prev = 0;
+      bg_enabled_prev = 0,
+      j;
   uint8_t special_funcs;
   size_t i,
          getline_len = 0;
-  char *line = NULL,
+  char *line[1] = {NULL},
        *wd,
        *prompt, 
        *hostname,
@@ -137,11 +287,13 @@ int main(int argc, char** argv)
   uid_t uid;
   pid_t spawnpid;
   Strs* cline;
+  Pidts pids_bg[1];
   struct sigaction ignore_action = {0},
                    SIGINT_action = {0},
                    SIGTSTP_action = {0};
   locale_t locale;
 
+  initPidts(pids_bg);
 
   ignore_action.sa_handler = SIG_IGN;
   SIGINT_action.sa_handler =  catchSIGINT;
@@ -173,10 +325,7 @@ int main(int argc, char** argv)
     cline = malloc(sizeof(Strs));
     initStrs(cline);
     wd = getcwd(NULL, 0);
-    // FIXME: random sizes...
-    prompt = malloc(100 * sizeof(char));
-    memset(prompt, 0, 100 * sizeof(char));
-    hostname = malloc(255 * sizeof(char));
+    hostname = malloc(HOSTNAME_SIZE * sizeof(char));
     special_funcs = 0;
     // magic value for "these were never modified"
     fd_stdin = -2;
@@ -187,9 +336,13 @@ int main(int argc, char** argv)
     locale = newlocale(LC_ALL_MASK, locale_str, 0);
     
     // Get hostname of computer
-    gethostname(hostname, 255);
+    gethostname(hostname, HOSTNAME_SIZE);
     uid = geteuid();
     pw = getpwuid(uid);
+
+    i = (10 + HOSTNAME_SIZE + strlen(pw->pw_name) + strlen(hostname) + strlen(hostname));
+    prompt = malloc(i * sizeof(char));
+    memset(prompt, 0, i * sizeof(char));
 
     // build shell prompt
     strcat(prompt, pw->pw_name);
@@ -207,21 +360,7 @@ int main(int argc, char** argv)
     }
 
     // Check if children have exited
-    j = waitpid(pid_bg, &waitpid_status_bg, WNOHANG);
-    
-    if (j == pid_bg)
-    {
-      if (WIFSIGNALED(waitpid_status_bg))
-      {
-        printf("background pid %i is done: terminated by signal %i\n", pid_bg, WTERMSIG(waitpid_status_bg));
-      }
-      else if (WIFEXITED(waitpid_status_bg))
-      {
-        printf("background pid %i is done: exit value %i\n", pid_bg, WEXITSTATUS(waitpid_status_bg));
-      }
-
-      pid_bg = -10;
-    }
+    printBGProcessStatus(pids_bg);
 
     // Check whether background mode has been toggled
     if (! (bg_enabled == bg_enabled_prev))
@@ -243,7 +382,7 @@ int main(int argc, char** argv)
     if (input_mode == INTERACTIVE)
     {
       blocked_by_readline = 0;
-      line = readline(prompt);
+      *line = readline(prompt);
       blocked_by_readline = 1;
     }
     else if (input_mode == PIPE)
@@ -255,19 +394,16 @@ int main(int argc, char** argv)
       fflush(stdout);
       #endif
 
-      if (getline(&line, &getline_len, stdin) == -1)
+      if (getline(line, &getline_len, stdin) == -1)
       {
-        exit(0);
-        // FIXME: exit properly
+        exitShell(pids_bg);
       }
     }
 
 
-    if (line == NULL)
+    if (*line == NULL)
     {
-      exit(0); // FIXME: deallocate memory and stuff before exiting
-      // FIXME: children should die with me, but for some reason they don't
-        // FIXME: exit properly
+      exitShell(pids_bg);
     }
 
     // Parse input line into strings by whitespace
@@ -290,8 +426,7 @@ int main(int argc, char** argv)
       if (strcmp(cline->d[0], "exit") == 0)
       {
         printf("Exiting smallsh.\n");
-        exit(0);
-        // FIXME: exit properly
+        exitShell(pids_bg);
       }
       // builtin "cd"
       else if (strcmp(cline->d[0], "cd") == 0)
@@ -347,7 +482,7 @@ int main(int argc, char** argv)
 
         // Redirect I/O to /dev/null if running in background
         // and the user didn't alreay specify I/O redirection
-        if ((containsStrs(cline, "&") == cline->used - 1) && (bg_enabled == 0))
+        if ((containsStrs(cline, "&") == cline->used - 1) && (cline->used > 1) && (bg_enabled == 0))
         {
           special_funcs |= EXEC_BG;
 
@@ -374,11 +509,11 @@ int main(int argc, char** argv)
           truncateStrs(cline, containsStrs(cline, ">"));
         }
 
-        if (containsStrs(cline, "&") == cline->used - 1)
+        if ((containsStrs(cline, "&") == cline->used - 1) && (cline->used > 1))
         {
           truncateStrs(cline, containsStrs(cline, "&"));
         }
-  
+
         // add null string to end of args list, which execvp() uses as a terminator
         // FIXME: Put I/O redirection filenames beyond this terminator so that child knows the filenames
         pushStrs(cline, NULL);
@@ -433,8 +568,9 @@ int main(int argc, char** argv)
             if (special_funcs & EXEC_BG)
             {
               waitpid(spawnpid, &waitpid_status_bg, WNOHANG);
-              pid_bg = spawnpid;
-              printf("background pid is %i\n", pid_bg);
+              // FIXME: check whether fork actually worked before putting pids in array
+              pushPidts(pids_bg, spawnpid);
+              printf("background pid is %i\n", spawnpid);
             }
             else
             {
@@ -471,18 +607,8 @@ int main(int argc, char** argv)
     free(wd);
     free(prompt);
     free(hostname);
-    free(locale_str);
-
-    // readline reallocates its memory every time, so free it every time
-    if (input_mode == INTERACTIVE)
-    {
-      free(line);
-    }
-  }
-
-  // getline reuses the same memory over and over, so only free it upon exit
-  if(input_mode == PIPE)
-  {
-    free(line);
+    free(*line);
+    *line = NULL;
+    freelocale(locale);
   }
 }
