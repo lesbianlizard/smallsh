@@ -29,23 +29,9 @@ int bg_enabled = 0;
 int blocked_by_readline = 1;
 sigjmp_buf ctrlc_buf;
 
-/*
 
-int strReplace2(char* string, char* find, char* replace, char** dest) {
-
-  char *where;
-  char *
-
-  do {
-    where=
-
-  } while()
-
-}
-
-*/
-
-// FIXME: fix this function
+// This function replaces all instances of find with replace in string,
+// storing the result in a newly-allocated buffer *dest.
 int strReplace(char* string, char* find, char* replace, char** dest)
 {
   char *where,
@@ -58,10 +44,8 @@ int strReplace(char* string, char* find, char* replace, char** dest)
          string_len = strlen(string),
          len_prev = 0;
   int found = 0;
-  //char* result = malloc((strlen(string)) * sizeof(char))
-  //printf("in string '%s', replacing '%s' with '%s'\n", string, find, replace);
-  //printf("string is size %i\n", string_len);
 
+  // Set where to the first occurance of find in string, if it exists
   where = strstr(string, find);
 
   while (! (where == NULL))
@@ -83,59 +67,50 @@ int strReplace(char* string, char* find, char* replace, char** dest)
     else
     {
       where = strstr(string, find);
-      //strncat(result, string, where - string);
     }
   }
-  // $$$$$$$$asdfjkhk4$$44$44$$$$
-  // $$asdf$$asdf$$
-
-
 
   if (found == 0)
   {
-    //printf("Didn't replace anything\n");
     dest[0] = string;
     return 1;
   }
   else
   {
-    //printf("result of replacement: '%s'\n", result);
-    //printf("result is size %i\n", strlen(result));
     dest[0] = result;
     return 0;
   }
 }
 
 // Splits line at whitespace characters, putting them into the Strs* arr data structure
-void parseCLine(char** line_in, Strs* arr, enum InputMode input_mode)
+void parseCLine(char** line_in, Strs* arr)
 {
-  char* line = *line_in;
-  char* whitespace = " \t\n";
-  //char** temp = malloc(sizeof(char*));
-  char* temp[1];
-  char* temp2;
+  char *line = *line_in,
+       *whitespace = " \t\n",
+       *temp[1],
+       *temp2;
   // FIXME: size?
   char pid[10];
   size_t arglen;
 
+  // If the user entered nothing, do not attempt to parse
   if (strlen(line) == 0)
   {
     return;
   }
 
+  // Get PID of self
   sprintf(pid, "%i", getpid());
+
+  // Attempt to replace $$ with pid in user's input
   if (strReplace(line, "$$", pid, temp) == 0)
   {
+    // If strReplace succeeded, free the memory of the original string,
+    // updating line_in so the rest of the program knows the new memory address
     free(line);
-    //line = temp[0];
     line = *temp;
+    *line_in = line;
   }
-  // FIXME: Why does this free not work?
-  //free(temp);
-
-  //printf("result of replacement in parseCLine: '%s'\n", line);
-  *line_in = line;
-
 
 
   while(! ((line == NULL)))
@@ -275,7 +250,7 @@ int main(int argc, char** argv)
   {
     input_mode = PIPE;
   }
-    input_mode = PIPE;
+    input_mode = INTERACTIVE;
 
   while (1)
   {
@@ -376,7 +351,7 @@ int main(int argc, char** argv)
     }
 
     // Parse input line into strings by whitespace
-    parseCLine(line, cline, input_mode);
+    parseCLine(line, cline);
 
     // Ignore comments
     for (i = 0; i < cline->used; i++)
@@ -562,19 +537,7 @@ int main(int argc, char** argv)
     free(wd);
     free(prompt);
     free(hostname);
-
-    // readline reallocates its memory every time, so free it every time
-    //if (input_mode == INTERACTIVE)
-    if (1)
-    {
-      free(*line);
-      *line = NULL;
-    }
+    free(*line);
+    *line = NULL;
   }
-
-  // getline reuses the same memory over and over, so only free it upon exit
-//  if(input_mode == PIPE)
-//  {
-//    free(*line);
-//  }
 }
