@@ -16,7 +16,9 @@
 #include "config.h"
 #include "cstr.c"
 
-#include "string.c"
+#define NAME Strs
+#define DTYPE char*
+#include "array.c"
 #undef NAME
 #undef DTYPE
 

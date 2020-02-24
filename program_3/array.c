@@ -1,6 +1,7 @@
 // This file implements a simple dynamic array system for an arbitrary data type DTYPE
-#define NAME Strs
-#define DTYPE char*
+// You need to #define NAME and DYPE before including this file
+#define CONCAT(a, b) CONCAT_(a, b)
+#define CONCAT_(a, b) a ## b
 
 typedef struct {
   DTYPE *d;
@@ -9,7 +10,7 @@ typedef struct {
 } NAME;
 
 // Initialize a NAME object
-void initNAME(NAME* new_arr)
+void CONCAT(init, NAME)(NAME* new_arr)
 {
   const size_t initSize = 2;
   new_arr->d = malloc(initSize * sizeof(DTYPE));
@@ -18,7 +19,7 @@ void initNAME(NAME* new_arr)
 }
 
 // Free all memory allocated in a NAME
-void deallocNAME(NAME* arr)
+void CONCAT(dealloc, NAME)(NAME* arr)
 {
   size_t i;
 
@@ -31,18 +32,18 @@ void deallocNAME(NAME* arr)
 }
 
 // Double size of allocated memory
-void _growNAME(NAME* arr)
+void CONCAT(_grow, NAME)(NAME* arr)
 {
   arr->d = realloc(arr->d, arr->allocated*2*sizeof(char*));
   arr->allocated *= 2;
 }
 
 // Add a new string to the end of a NAME array
-void pushNAME(NAME* arr, char* new_string)
+void CONCAT(push, NAME)(NAME* arr, char* new_string)
 {
   if (!(arr->used < arr->allocated))
   {
-    _growNAME(arr);
+    CONCAT(_grow, NAME)(arr);
   }
 
   arr->d[arr->used] = new_string;
@@ -51,7 +52,7 @@ void pushNAME(NAME* arr, char* new_string)
 
 // Find the first occurence of search in arr and return its index.
 // Return SIZE_MAX if search is not in arr.
-size_t containsNAME(NAME* arr, char* search)
+size_t CONCAT(contains, NAME)(NAME* arr, char* search)
 {
   size_t i;
 
@@ -67,7 +68,7 @@ size_t containsNAME(NAME* arr, char* search)
 }
 
 // Remove all elements of a NAME array at an index greater than or equal to idx
-void truncateNAME(NAME* arr, size_t idx)
+void CONCAT(truncate, NAME)(NAME* arr, size_t idx)
 {
   size_t i;
 
