@@ -1,61 +1,63 @@
-// This file implements a simple dynamic array system for C strings
+// This file implements a simple dynamic array system for an arbitrary data type DTYPE
+#define NAME Strs
+#define DTYPE char*
 
 typedef struct {
-  char** d;
+  DTYPE *d;
   size_t allocated;
   size_t used;
-} Strs;
+} NAME;
 
-// Initialize a Strs object
-void initStrs(Strs* new_strs)
+// Initialize a NAME object
+void initNAME(NAME* new_arr)
 {
   const size_t initSize = 2;
-  new_strs->d = malloc(initSize * sizeof(char*));
-  new_strs->allocated = initSize;
-  new_strs->used = 0;
+  new_arr->d = malloc(initSize * sizeof(DTYPE));
+  new_arr->allocated = initSize;
+  new_arr->used = 0;
 }
 
-// Free all memory allocated in a Strs
-void deallocStrs(Strs* strs)
+// Free all memory allocated in a NAME
+void deallocNAME(NAME* arr)
 {
   size_t i;
 
-  for (i = 0; i < strs->used; i++)
+  for (i = 0; i < arr->used; i++)
   {
-    free(strs->d[i]);
+    free(arr->d[i]);
   }
 
-  free(strs->d);
+  free(arr->d);
 }
 
 // Double size of allocated memory
-void _growStrs(Strs* strs)
+void _growNAME(NAME* arr)
 {
-  strs->d = realloc(strs->d, strs->allocated*2*sizeof(char*));
-  strs->allocated *= 2;
+  arr->d = realloc(arr->d, arr->allocated*2*sizeof(char*));
+  arr->allocated *= 2;
 }
 
-// Add a new string to the end of a Strs array
-void pushStrs(Strs* strs, char* new_string)
+// Add a new string to the end of a NAME array
+void pushNAME(NAME* arr, char* new_string)
 {
-  if (!(strs->used < strs->allocated))
+  if (!(arr->used < arr->allocated))
   {
-    _growStrs(strs);
+    _growNAME(arr);
   }
 
-  strs->d[strs->used] = new_string;
-  strs->used++;
+  arr->d[arr->used] = new_string;
+  arr->used++;
 }
 
-// Find the first occurence of search in strs and return its index.
-// Return SIZE_MAX if search is not in strs.
-size_t containsStrs(Strs* strs, char* search)
+// Find the first occurence of search in arr and return its index.
+// Return SIZE_MAX if search is not in arr.
+size_t containsNAME(NAME* arr, char* search)
 {
   size_t i;
 
-  for (i = 0; i < strs->used; i++)
+  for (i = 0; i < arr->used; i++)
   {
-    if (strcmp(search, strs->d[i]) == 0)
+    if (strcmp(search, arr->d[i]) == 0)
     {
       return i;
     }
@@ -64,16 +66,16 @@ size_t containsStrs(Strs* strs, char* search)
   return SIZE_MAX;
 }
 
-// Remove all elements of a Strs array at an index greater than or equal to idx
-void truncateStrs(Strs* strs, size_t idx)
+// Remove all elements of a NAME array at an index greater than or equal to idx
+void truncateNAME(NAME* arr, size_t idx)
 {
   size_t i;
 
-  for (i = idx; i < strs->used; i++)
+  for (i = idx; i < arr->used; i++)
   {
-    free(strs->d[i]);
-    strs->d[i] = NULL;
+    free(arr->d[i]);
+    arr->d[i] = NULL;
   }
 
-  strs->used = idx;
+  arr->used = idx;
 }

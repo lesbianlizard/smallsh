@@ -15,7 +15,10 @@
 
 #include "config.h"
 #include "cstr.c"
+
 #include "string.c"
+#undef NAME
+#undef DTYPE
 
 // Save a few bytes by storing some state information
 // bitwise in a uint8_t
