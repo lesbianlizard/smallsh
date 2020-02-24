@@ -251,7 +251,6 @@ int main(int argc, char** argv)
   {
     input_mode = PIPE;
   }
-    input_mode = INTERACTIVE;
 
   while (1)
   {
@@ -259,8 +258,6 @@ int main(int argc, char** argv)
     initStrs(cline);
     wd = getcwd(NULL, 0);
     // FIXME: random sizes...
-    prompt = malloc(100 * sizeof(char));
-    memset(prompt, 0, 100 * sizeof(char));
     hostname = malloc(HOSTNAME_SIZE * sizeof(char));
     special_funcs = 0;
     // magic value for "these were never modified"
@@ -271,6 +268,10 @@ int main(int argc, char** argv)
     gethostname(hostname, HOSTNAME_SIZE);
     uid = geteuid();
     pw = getpwuid(uid);
+
+    i = (10 + HOSTNAME_SIZE + strlen(pw->pw_name) + strlen(hostname) + strlen(hostname));
+    prompt = malloc(i * sizeof(char));
+    memset(prompt, 0, i * sizeof(char));
 
     // FIXME: dynamically calculate prompt's length
     // build shell prompt
