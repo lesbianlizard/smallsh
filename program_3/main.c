@@ -600,16 +600,17 @@ int main(int argc, char** argv)
             // Attempt to execute user's command
             i = execvp(cline->d[0], cline->d);
             
+            //FIXME: print the errors for background processes onto the terminal with stdout
             // If command failed to execute, display error message and exit.
             if (errno == ENOENT)
             {
-              printf(_("%1$s: command not found: '%2$s'\n"),
+              fprintf(stderr, _("%1$s: command not found: '%2$s'\n"),
                   PROG_NAME,
                   cline->d[0]);
             }
             else
             {
-              printf(_("%1$s: cannot execute '%2$s': %3$s\n"),
+              fprintf(stderr, _("%1$s: cannot execute '%2$s': %3$s\n"),
                   PROG_NAME,
                   cline->d[0],
                   STRERROR(errno, locale));
