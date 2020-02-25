@@ -56,7 +56,8 @@ int strReplace(char* string, char* find, char* replace, char** dest)
 {
   char *where,
        *result = NULL,
-       *string_orig = string;
+       *string_orig = string,
+       *where2;
   size_t len = 0,
          len_from_orig,
          find_len = strlen(find),
@@ -86,7 +87,17 @@ int strReplace(char* string, char* find, char* replace, char** dest)
     }
     else
     {
+      where2 = where;
       where = strstr(string, find);
+
+      if (where == NULL)
+      {
+        len_prev = len;
+        len += strlen(where2);
+        result = realloc(result, (len + 1) * sizeof(char));
+        memset(result + len_prev, 0, len - len_prev);
+        strcat(result, string);
+      }
     }
   }
 
@@ -302,6 +313,7 @@ int main(int argc, char** argv)
   size_t i,
          getline_len = 0;
   char *line[1] = {NULL},
+       *temp[1] = {NULL},
        *wd,
        *prompt, 
        *hostname,
@@ -354,6 +366,12 @@ int main(int argc, char** argv)
     // magic value for "these were never modified"
     fd_stdin = -2;
     fd_stdout = -2;
+
+    if (strReplace(wd, getenv("HOME"), "~", temp) == 0)
+    {
+      free(wd);
+      wd = *temp;
+    }
     
     // FIXME: this leaks
     locale_str = setlocale(LC_ALL, "");
