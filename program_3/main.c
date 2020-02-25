@@ -71,13 +71,17 @@ int strReplace(char* string, char* find, char* replace, char** dest)
   while (! (where == NULL))
   {
     found = 1;
+    // How far along the string is find?
     len_from_orig = where - string;
     len_prev = len;
     len += len_from_orig + replace_len;
     result = realloc(result, (len + 1) * sizeof(char));
     memset(result + len_prev, 0, len - len_prev);
+    // copy plain part of string
     strncat(result, string, len_from_orig);
+    // copy replacement
     strncat(result, replace, replace_len);
+    // Offset string so that we don't find the same 'find' again
     string = where + find_len;
 
     if (string > (string_orig + string_len))
@@ -89,6 +93,7 @@ int strReplace(char* string, char* find, char* replace, char** dest)
       where2 = where;
       where = strstr(string, find);
 
+      // In this case, there is something at the end of the string we need to copy
       if (where == NULL)
       {
         len_prev = len;
@@ -100,6 +105,7 @@ int strReplace(char* string, char* find, char* replace, char** dest)
     }
   }
 
+  // Either return original string, or a new one
   if (found == 0)
   {
     dest[0] = string;
@@ -119,7 +125,7 @@ void parseCLine(char** line_in, Strs* arr)
        *whitespace = " \t\n",
        *temp[1],
        *temp2;
-  // FIXME: size?
+  // assuming pid_t is 4 bytes long, represented in decimal
   char pid[10];
   size_t arglen;
 
@@ -178,12 +184,7 @@ void parseCLine(char** line_in, Strs* arr)
 
 }
 
-// FIXME: take third argument to replace "error" with custom localized string
-//void printError(char* prog_name, char* error)
-//{
-//  printf("%s: error: %s\n", prog_name, error);
-//}
-
+// When we get an interrupt, print a newline if waiting at readline prompt
 void catchSIGINT(int signo)
 {
   if (blocked_by_readline == 0)
@@ -192,6 +193,7 @@ void catchSIGINT(int signo)
   }
 }
 
+// Toggle background enabled flag on SIGTSTP
 void catchSIGTSTP(int signo)
 {
   if (bg_enabled == 0)
@@ -209,6 +211,8 @@ void catchSIGTSTP(int signo)
   }
 }
 
+// Given an array of bagkground process pids, check if each one has exited with waitpid(), and print
+// their exit status if they have
 size_t printBGProcessStatus(Pidts* pids_bg)
 {
     size_t n_pids = pids_bg->used,
@@ -239,6 +243,7 @@ size_t printBGProcessStatus(Pidts* pids_bg)
           fflush(stdout);
         }
 
+        // remove PID from list, since process has exited
         removeValsPidts(pids_bg, pid);
         n_pids = pids_bg->used;
       }
@@ -254,6 +259,7 @@ size_t printBGProcessStatus(Pidts* pids_bg)
     return pids_bg->used;
 }
 
+// Prints the exit status of a foreground process
 void exitStatus(int* waitpid_status)
 {
   if (WIFSIGNALED(*waitpid_status))
@@ -270,6 +276,7 @@ void exitStatus(int* waitpid_status)
   }
 }
 
+// Kill all pids in the given array
 void killBGProcesses(Pidts* pids)
 {
   size_t i;
@@ -287,9 +294,9 @@ void killBGProcesses(Pidts* pids)
   }
 }
 
+// Exit the shell
 void exitShell(Pidts* pids)
 {
-  //printf("Exiting smallsh.\n");
   // send signal to all background processes
   killBGProcesses(pids);
   // Wait for background processes to exit
@@ -300,7 +307,7 @@ void exitShell(Pidts* pids)
 }
 
 // Set the global exit flag, causing the shell to exit cleanly
-// Possibly will actually do something in future?
+// Possibly will actually do something here in the future?
 void setExitFlag()
 {
   exit_now = 0;
@@ -314,25 +321,25 @@ int main(int argc, char** argv)
       waitpid_status_bg = 0,
       bg_enabled_prev = 0,
       j;
-  uint8_t special_funcs;
-  size_t i,
-         getline_len = 0;
   char *line[1] = {NULL},
        *temp[1] = {NULL},
        *wd,
        *prompt, 
        *hostname,
        *locale_str;
+  size_t i,
+         getline_len = 0;
+  uint8_t special_funcs;
   struct passwd *pw;
   enum InputMode input_mode;
   uid_t uid;
   pid_t spawnpid;
   Strs* cline;
   Pidts pids_bg[1];
+  locale_t locale;
   struct sigaction ignore_action = {0},
                    SIGINT_action = {0},
                    SIGTSTP_action = {0};
-  locale_t locale;
 
   initPidts(pids_bg);
 
@@ -366,19 +373,22 @@ int main(int argc, char** argv)
     cline = malloc(sizeof(Strs));
     initStrs(cline);
     wd = getcwd(NULL, 0);
+    // allocate a very large amount of memory for hostname because apparently
+    // they can be 255 characters long
     hostname = malloc(HOSTNAME_SIZE * sizeof(char));
     special_funcs = 0;
     // magic value for "these were never modified"
     fd_stdin = -2;
     fd_stdout = -2;
 
+    // Replace $HOME with ~ in prompt
     if (strReplace(wd, getenv("HOME"), "~", temp) == 0)
     {
       free(wd);
       wd = *temp;
     }
     
-    // FIXME: this leaks
+    // Initialize locales
     locale_str = setlocale(LC_ALL, "");
     locale = newlocale(LC_ALL_MASK, locale_str, 0);
     
@@ -387,17 +397,13 @@ int main(int argc, char** argv)
     uid = geteuid();
     pw = getpwuid(uid);
 
-    i = (10 + HOSTNAME_SIZE + strlen(pw->pw_name) + strlen(hostname) + strlen(hostname));
+    // allocate memory for prompt based on size of components
+    i = (10 + strlen(pw->pw_name) + strlen(hostname) + strlen(wd));
     prompt = malloc(i * sizeof(char));
     memset(prompt, 0, i * sizeof(char));
 
     // build shell prompt
-    strcat(prompt, pw->pw_name);
-    strcat(prompt, "@");
-    strcat(prompt, hostname);
-    strcat(prompt, " ");
-    strcat(prompt, wd);
-    strcat(prompt, " : ");
+    sprintf(prompt, "%1$s@%2$s %3$s : ", pw->pw_name, hostname, wd);
 
     // Jumps from signal handlers land here
     if (! (sigsetjmp(ctrlc_buf, 1) == 0))
@@ -521,7 +527,6 @@ int main(int argc, char** argv)
           fd_stdin = open(cline->d[containsStrs(cline, "<") + 1], O_RDONLY);
         }
 
-        // FIXME: print filename
         if (fd_stdin == -1)
         {
           printf(_("%1$s: error: cannot open '%2$s' for I/O redirection: %3$s\n"),
@@ -538,7 +543,6 @@ int main(int argc, char** argv)
           fd_stdout = open(cline->d[containsStrs(cline, ">") + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
         }
 
-        // FIXME: print filename
         if (fd_stdout == -1)
         {
           printf(_("%1$s: error: cannot open '%2$s' for I/O redirection: %3$s\n"),
@@ -583,7 +587,6 @@ int main(int argc, char** argv)
         }
 
         // add null string to end of args list, which execvp() uses as a terminator
-        // FIXME: Put I/O redirection filenames beyond this terminator so that child knows the filenames
         pushStrs(cline, NULL);
         // Fork to execute user's command
         spawnpid = fork();
@@ -692,7 +695,6 @@ int main(int argc, char** argv)
       }
     }
 
-    // FIXME: frees need to be in function that can be called upon exit
     // free dynamic memory
     deallocStrs(cline);
     free(cline);

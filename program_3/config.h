@@ -2,6 +2,9 @@
 #define HOSTNAME_SIZE 255
 #define PROG_NAME "smallsh"
 
+// strerror_l turned out not to be necessary to localize
+// error messages, as regular strerror seems to translate itself
+// if locale is set up. More investigation is needed.
 //#define USE_STRERROR_L
 
 #ifdef USE_STRERROR_L
@@ -10,6 +13,7 @@
   #define STRERROR(a, b) strerror(a)
 #endif
 
+// We aren't using gettext, yet
 #ifdef USE_GETTEXT
   #define _(String) (String)
   #define N_(String) String
