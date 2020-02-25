@@ -20,7 +20,6 @@
 #include <unistd.h>
 
 #include "config.h"
-#include "cstr.c"
 
 #define NAME Strs
 #define DTYPE char*
@@ -519,6 +518,7 @@ int main(int argc, char** argv)
             PROG_NAME,
             cline->d[containsStrs(cline, "<") + 1],
             STRERROR(errno, locale));
+          fflush(stdout);
         }
           
         // Redirect stdout to file
@@ -535,6 +535,7 @@ int main(int argc, char** argv)
             PROG_NAME,
             cline->d[containsStrs(cline, ">") + 1],
             STRERROR(errno, locale));
+          fflush(stdout);
         }
 
         // Redirect I/O to /dev/null if running in background
