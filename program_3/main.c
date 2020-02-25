@@ -229,12 +229,14 @@ size_t printBGProcessStatus(Pidts* pids_bg)
             pid,
             WTERMSIG(wp_status),
             strsignal(WTERMSIG(wp_status)));
+          fflush(stdout);
         }
         else if (WIFEXITED(wp_status))
         {
           printf(_("background pid %1$i is done: exit value %2$i\n"),
             pid,
             WEXITSTATUS(wp_status));
+          fflush(stdout);
         }
 
         removeValsPidts(pids_bg, pid);
@@ -245,6 +247,7 @@ size_t printBGProcessStatus(Pidts* pids_bg)
         printf(_("%1$s: waitpid error: %2$s\n"),
             PROG_NAME,
             STRERROR(errno, locale));
+        fflush(stdout);
       }
     }
 
@@ -258,10 +261,12 @@ void exitStatus(int* waitpid_status)
     printf(_("terminated by signal %1$i (%2$s)\n"),
       WTERMSIG(*waitpid_status),
       strsignal(WTERMSIG(*waitpid_status)));
+    fflush(stdout);
   }
   else
   {
     printf(_("exited with status %1$i\n"), WEXITSTATUS(*waitpid_status));
+    fflush(stdout);
   }
 }
 
@@ -277,6 +282,7 @@ void killBGProcesses(Pidts* pids)
           PROG_NAME,
           pids->d[i],
           STRERROR(errno, locale));
+      fflush(stdout);
     }
   }
 }
@@ -398,6 +404,7 @@ int main(int argc, char** argv)
     {
       // Print newline so that prompts don't stack on the same line
       printf("\n");
+      fflush(stdout);
     }
 
     // Check if children have exited
@@ -411,10 +418,12 @@ int main(int argc, char** argv)
       if (bg_enabled == 0)
       {
         printf(_("Leaving foreground-only mode\n"));
+        fflush(stdout);
       }
       else
       {
         printf(_("Entering foreground-only mode (& is now ignored)\n"));
+        fflush(stdout);
       }
     }
 
@@ -431,7 +440,7 @@ int main(int argc, char** argv)
       // Outputting prompts when not in interactive mode makes little sense, but
       // the " : " prompt is explicitly part of the assignment
       #ifdef APPEASE_GRADER
-       printf(" : ");
+      printf(" : ");
       fflush(stdout);
       #endif
 
@@ -493,6 +502,7 @@ int main(int argc, char** argv)
             PROG_NAME,
             cline->d[1],
             STRERROR(errno, locale));
+          fflush(stdout);
         }
       }
       // builtin "status"
@@ -584,6 +594,7 @@ int main(int argc, char** argv)
             printf(_("%1$s: fork failed: %2$s\n"),
                 PROG_NAME,
                 STRERROR(errno, locale));
+            fflush(stdout);
             break;
           // we are the child
           case 0:
@@ -626,6 +637,7 @@ int main(int argc, char** argv)
               fprintf(stderr, _("%1$s: command not found: '%2$s'\n"),
                   PROG_NAME,
                   cline->d[0]);
+              fflush(stderr);
             }
             else
             {
@@ -633,6 +645,7 @@ int main(int argc, char** argv)
                   PROG_NAME,
                   cline->d[0],
                   STRERROR(errno, locale));
+              fflush(stderr);
             }
 
             exit(1);
@@ -646,6 +659,7 @@ int main(int argc, char** argv)
               // FIXME: check whether fork actually worked before putting pids in array
               pushPidts(pids_bg, spawnpid);
               printf(_("background pid is %1$i\n"), spawnpid);
+              fflush(stdout);
             }
             else
             {
@@ -659,6 +673,7 @@ int main(int argc, char** argv)
               printf(_("terminated by signal %1$i (%2$s)\n"),
                 WTERMSIG(waitpid_status),
                 strsignal(WTERMSIG(waitpid_status)));
+              fflush(stdout);
             }
 
             // Close files used for I/O redirection if they were opened
