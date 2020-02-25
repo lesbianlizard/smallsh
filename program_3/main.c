@@ -33,7 +33,7 @@ sigjmp_buf ctrlc_buf;
 
 // Replaces all instances of `find` in `string` with `replace`, modifying
 // `string` in place. Returns the number of replacements made.
-int strReplace2(char* string, const char* find, const char* replace) {
+int strReplace2(const char* string, const char* find, const char* replace, char** result) {
 
 	char *where = strstr(string, find);
 
@@ -43,15 +43,33 @@ int strReplace2(char* string, const char* find, const char* replace) {
 	int before_part_len = where - string;
 	int replace_part_len = strlen(replace);
 	int replaced_part_len = strlen(find);
-	//int lookahead = strstr(string + before_part_len + replace_part_len, find) - string;
 
-	string = realloc(string, (strlen(string)+1 + replace_part_len - replaced_part_len) * sizeof(char));
+	int len = strlen(string)+1;
+	int newlen = len + replace_part_len - replaced_part_len;
 
-	memmove(string + before_part_len + replace_part_len,\
-				  string + before_part_len + replaced_part_len,\
-					(strlen(string)+1) - before_part_len + replaced_part_len);
+	// in case our replaced string is actually going to be smaller, we can't strink our
+	// memory before we shuffle string around
+	// so only realloc if our new string is going to be bigger
+	if (newlen > len) {
+			*result = realloc(string, newlen * sizeof(char));
+			memset(string+len-1, 0, newlen-len);
+	}
 
-	memcpy(string + before_part_len, replace, replace_part_len);
+	int from = before_part_len + replaced_part_len;
+	int to = before_part_len + replace_part_len;
+	int size = len - (before_part_len + replaced_part_len);
+	// move any part of the original string which would be unwantedly overwritten out of the way
+	memmove(*result+to,\
+				  *result+from,\
+					size);
+
+	// copy the replacement into place
+	memcpy(*result + before_part_len, replace, replace_part_len);
+
+	// now we can shrink, if we've ended up with a smaller string
+	if (newlen < len) {
+			string = realloc(string, newlen * sizeof(char));
+	}
 
 	return strReplace2(string, find, replace) + 1;
 }
@@ -241,9 +259,10 @@ void exitStatus(int* waitpid_status)
 
 int main(int argc, char** argv)
 {
-	char* repl;
+	chaneededr* repl;
 	repl = strReplace3(argv[1], "$$", argv[2]);
 	printf("%s\n", repl);
+	free(repl);
 	exit(1);
 
   int fd_stdin,
