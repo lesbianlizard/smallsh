@@ -1,0 +1,89 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-03-01 04:47-0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: main.c:232
+#, c-format
+msgid "background pid %1$i is done: terminated by signal %2$i (%3$s)\n"
+msgstr ""
+
+#: main.c:240
+#, c-format
+msgid "background pid %1$i is done: exit value %2$i\n"
+msgstr ""
+
+#: main.c:252
+#, c-format
+msgid "%1$s: waitpid error: %2$s\n"
+msgstr ""
+
+#. FIXME: can we detect whether someone just pressed ^C, and print an extra newline if so?
+#: main.c:267 main.c:679
+#, c-format
+msgid "terminated by signal %1$i (%2$s)\n"
+msgstr ""
+
+#: main.c:274
+#, c-format
+msgid "exited with status %1$i\n"
+msgstr ""
+
+#: main.c:288
+#, c-format
+msgid "%1$s: cannot kill child pid %2$i: %3$s\n"
+msgstr ""
+
+#: main.c:429
+#, c-format
+msgid "Leaving foreground-only mode\n"
+msgstr ""
+
+#: main.c:434
+#, c-format
+msgid "Entering foreground-only mode (& is now ignored)\n"
+msgstr ""
+
+#: main.c:510
+#, c-format
+msgid "%1$s: error: cannot change directory to '%2$s': %3$s\n"
+msgstr ""
+
+#: main.c:535 main.c:551
+#, c-format
+msgid "%1$s: error: cannot open '%2$s' for I/O redirection: %3$s\n"
+msgstr ""
+
+#: main.c:600
+#, c-format
+msgid "%1$s: fork failed: %2$s\n"
+msgstr ""
+
+#: main.c:643
+#, c-format
+msgid "%1$s: command not found: '%2$s'\n"
+msgstr ""
+
+#: main.c:650
+#, c-format
+msgid "%1$s: cannot execute '%2$s': %3$s\n"
+msgstr ""
+
+#: main.c:667
+#, c-format
+msgid "background pid is %1$i\n"
+msgstr ""

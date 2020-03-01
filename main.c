@@ -391,6 +391,10 @@ int main(int argc, char** argv)
     // Initialize locales
     locale_str = setlocale(LC_ALL, "");
     locale = newlocale(LC_ALL_MASK, locale_str, 0);
+    // Set up gettext domains
+    // FIXME: probably don't need to do this every time the loop runs
+    bindtextdomain(GETTEXT_DOMAIN, GETTEXT_DIR);
+    textdomain(GETTEXT_DOMAIN);
     
     // Get hostname of computer
     gethostname(hostname, HOSTNAME_SIZE);

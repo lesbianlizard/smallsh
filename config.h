@@ -13,8 +13,12 @@
   #define STRERROR(a, b) strerror(a)
 #endif
 
-// We aren't using gettext, yet
-#ifdef USE_GETTEXT
+// We are using gettext, hooray!
+#define USE_GETTEXT
+#define GETTEXT_DOMAIN "smallsh-translations"
+#define GETTEXT_DIR "translations-dir"
+
+#ifndef USE_GETTEXT
   #define _(String) (String)
   #define N_(String) String
   #define textdomain(Domain)
