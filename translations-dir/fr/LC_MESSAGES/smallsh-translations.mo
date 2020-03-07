@@ -1,1 +1,0 @@
-../../../po/fr/smallsh-translations.mo
